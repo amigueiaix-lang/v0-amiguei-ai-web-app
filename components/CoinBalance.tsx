@@ -3,8 +3,7 @@
 import { useState } from "react"
 import { AmigueiCoin } from "./AmigueiCoin"
 import { CoinStore } from "./CoinStore"
-import { useCoins } from "@/hooks/useCoins"
-import { Loader2 } from "lucide-react"
+import { useCoins } from "@/contexts/CoinsContext"
 import { cn } from "@/lib/utils"
 
 interface CoinBalanceProps {
@@ -27,7 +26,7 @@ export function CoinBalance({
   className,
   variant = "default",
 }: CoinBalanceProps) {
-  const { balance, loading, error } = useCoins()
+  const { coins } = useCoins()
   const [storeOpen, setStoreOpen] = useState(false)
 
   const isCompact = variant === "compact"
@@ -43,46 +42,21 @@ export function CoinBalance({
           className
         )}
         title="View and purchase Amiguei.Coins"
-        aria-label={`Coin balance: ${balance} coins. Click to purchase more.`}
+        aria-label={`Coin balance: ${coins} coins. Click to purchase more.`}
       >
-        {loading ? (
-          <>
-            <Loader2 className="w-5 h-5 text-white animate-spin" />
-            {!isCompact && (
-              <span className="text-sm font-semibold text-white">
-                Carregando...
-              </span>
-            )}
-          </>
-        ) : error ? (
-          <>
-            <AmigueiCoin size={isCompact ? "small" : "medium"} />
-            <span
-              className={cn(
-                "font-semibold text-white",
-                isCompact ? "text-sm" : "text-base"
-              )}
-            >
-              --
-            </span>
-          </>
-        ) : (
-          <>
-            <AmigueiCoin size={isCompact ? "small" : "medium"} />
-            <span
-              className={cn(
-                "font-semibold text-white",
-                isCompact ? "text-sm" : "text-base"
-              )}
-            >
-              {balance.toLocaleString()}
-            </span>
-            {!isCompact && (
-              <span className="text-xs text-pink-100 hidden sm:inline">
-                {balance === 1 ? "coin" : "coins"}
-              </span>
-            )}
-          </>
+        <AmigueiCoin size={isCompact ? "small" : "medium"} />
+        <span
+          className={cn(
+            "font-semibold text-white",
+            isCompact ? "text-sm" : "text-base"
+          )}
+        >
+          {coins.toLocaleString()}
+        </span>
+        {!isCompact && (
+          <span className="text-xs text-pink-100 hidden sm:inline">
+            {coins === 1 ? "coin" : "coins"}
+          </span>
         )}
       </button>
 

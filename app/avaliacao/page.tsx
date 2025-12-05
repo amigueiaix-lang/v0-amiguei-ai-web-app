@@ -7,7 +7,7 @@ import { Logo } from "@/components/logo"
 import { supabase } from "@/lib/supabase"
 import type { ClosetItem, SelectedPieces, EvaluationPayload, EvaluationResult } from "@/types/evaluation"
 import { CATEGORY_MAPPING } from "@/types/evaluation"
-import { useCoins } from "@/hooks/useCoins"
+import { useCoins } from "@/contexts/CoinsContext"
 import { CoinStore } from "@/components/CoinStore"
 import { AmigueiCoin } from "@/components/AmigueiCoin"
 import { toast } from "sonner"
@@ -51,7 +51,7 @@ export default function AvaliacaoPage() {
   const [showCoinStore, setShowCoinStore] = useState(false)
 
   // Coins hook
-  const { balance, deduct, hasEnough, refresh: refreshBalance } = useCoins()
+  const { coins, deductCoins, hasEnoughCoins } = useCoins()
 
   // Debounced search values
   const debouncedSearchTop = useDebounce(searchTop, 300)
@@ -171,25 +171,25 @@ export default function AvaliacaoPage() {
       }
 
       // 💰 VERIFICAR SALDO DE COINS ANTES DE AVALIAR LOOK
-      if (!hasEnough(1)) {
+      if (!hasEnoughCoins(1)) {
         setSubmitting(false)
         setShowInsufficientCoinsModal(true)
         return
       }
 
       // 💰 DEDUZIR 1 COIN ANTES DE CHAMAR O N8N
-      const deductResult = await deduct(1)
-      if (!deductResult.success) {
-        console.error("❌ Falha ao deduzir coin:", deductResult.message)
+      const success = deductCoins(1)
+      if (!success) {
+        console.error("❌ Falha ao deduzir coin")
         toast.error("❌ Erro ao processar pagamento", {
           description: "Não foi possível debitar o coin. Tente novamente.",
         })
         return
       }
 
-      console.log("💰 1 coin deduzido. Novo saldo:", deductResult.balance)
+      console.log("💰 1 coin deduzido. Novo saldo:", coins - 1)
       toast.info("💰 1 coin debitado", {
-        description: `Saldo restante: ${deductResult.balance} coins`,
+        description: `Saldo restante: ${coins - 1} coins`,
         duration: 3000,
       })
 
@@ -294,7 +294,7 @@ export default function AvaliacaoPage() {
               Ops! Você precisa de mais coins
             </h2>
             <p className="text-gray-600 mb-4">
-              Você tem <span className="font-bold text-pink-600">{balance} {balance === 1 ? 'coin' : 'coins'}</span> e precisa de <span className="font-bold">1 coin</span> para avaliar um look.
+              Você tem <span className="font-bold text-pink-600">{coins} {coins === 1 ? 'coin' : 'coins'}</span> e precisa de <span className="font-bold">1 coin</span> para avaliar um look.
             </p>
           </div>
 
@@ -322,7 +322,6 @@ export default function AvaliacaoPage() {
           open={showCoinStore}
           onClose={() => {
             setShowCoinStore(false)
-            refreshBalance()
             setShowInsufficientCoinsModal(false)
           }}
         />

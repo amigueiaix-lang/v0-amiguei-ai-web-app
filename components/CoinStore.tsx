@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { AmigueiCoin } from "./AmigueiCoin"
-import { useCoins } from "@/hooks/useCoins"
+import { useCoins } from "@/contexts/CoinsContext"
 import { Sparkles, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -64,41 +64,26 @@ const COIN_PACKAGES: CoinPackage[] = [
  * <CoinStore open={isOpen} onClose={() => setIsOpen(false)} />
  */
 export function CoinStore({ open, onClose }: CoinStoreProps) {
-  const { balance, add } = useCoins()
+  const { coins, addCoins } = useCoins()
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null)
 
-  const handlePurchase = async (pkg: CoinPackage) => {
+  const handlePurchase = (pkg: CoinPackage) => {
     setSelectedPackage(pkg.id)
 
-    try {
-      // Add coins to user's balance
-      const result = await add(pkg.coins, `Purchase of ${pkg.coins} coins package`)
+    // Add coins instantly (visual only)
+    addCoins(pkg.coins)
 
-      if (result.success) {
-        // Show success toast
-        toast.success(`✅ Você ganhou ${pkg.coins} Amiguei.Coins!`, {
-          description: `Seu novo saldo é ${result.balance} coins`,
-          duration: 4000,
-        })
+    // Show success toast
+    toast.success(`✅ Você ganhou ${pkg.coins} Amiguei.Coins!`, {
+      description: `Seu novo saldo é ${coins + pkg.coins} coins`,
+      duration: 4000,
+    })
 
-        // Close modal after a short delay
-        setTimeout(() => {
-          onClose()
-        }, 1500)
-      } else {
-        // Show error toast
-        toast.error("❌ Erro ao processar compra", {
-          description: result.message || "Tente novamente mais tarde",
-        })
-      }
-    } catch (error) {
-      console.error("Error purchasing coins:", error)
-      toast.error("❌ Erro ao processar compra", {
-        description: "Ocorreu um erro inesperado",
-      })
-    } finally {
+    // Close modal after a short delay
+    setTimeout(() => {
       setSelectedPackage(null)
-    }
+      onClose()
+    }, 1500)
   }
 
   return (
@@ -126,10 +111,10 @@ export function CoinStore({ open, onClose }: CoinStoreProps) {
             <div className="flex items-center gap-2">
               <AmigueiCoin size="medium" animated />
               <span className="text-2xl font-bold text-gray-900">
-                {balance}
+                {coins}
               </span>
               <span className="text-sm text-gray-600">
-                {balance === 1 ? "coin" : "coins"}
+                {coins === 1 ? "coin" : "coins"}
               </span>
             </div>
           </div>

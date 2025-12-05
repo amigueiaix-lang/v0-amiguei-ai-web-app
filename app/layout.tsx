@@ -4,6 +4,7 @@ import { Inter, Playfair_Display } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Header } from "@/components/Header"
 import { Toaster } from "sonner"
+import { CoinsProvider } from "@/contexts/CoinsContext"
 import "./globals.css"
 
 const inter = Inter({
@@ -30,10 +31,12 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
-        <Header />
-        {children}
-        <Analytics />
-        <Toaster position="top-center" richColors />
+        <CoinsProvider>
+          <Header />
+          {children}
+          <Analytics />
+          <Toaster position="top-center" richColors />
+        </CoinsProvider>
       </body>
     </html>
   )

@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase"
 // TODO: Reativar RefreshCw quando implementar substituição individual no N8N
 import { Loader2, Sparkles, AlertCircle } from "lucide-react"
 import Image from "next/image"
-import { useCoins } from "@/hooks/useCoins"
+import { useCoins } from "@/contexts/CoinsContext"
 import { CoinStore } from "@/components/CoinStore"
 import { AmigueiCoin } from "@/components/AmigueiCoin"
 import { toast } from "sonner"
@@ -46,7 +46,7 @@ export default function ResultadoPage() {
   // const [refreshingItem, setRefreshingItem] = useState<'top' | 'bottom' | 'shoes' | null>(null)
   const [showInsufficientCoinsModal, setShowInsufficientCoinsModal] = useState(false)
   const [showCoinStore, setShowCoinStore] = useState(false)
-  const { balance, deduct, hasEnough, refresh: refreshBalance } = useCoins()
+  const { coins, deductCoins, hasEnoughCoins } = useCoins()
 
   useEffect(() => {
     generateLook()
@@ -66,7 +66,7 @@ export default function ResultadoPage() {
       }
 
       // 💰 VALIDAR SALDO DE COINS ANTES DE GERAR LOOK
-      if (!hasEnough(1)) {
+      if (!hasEnoughCoins(1)) {
         setLoading(false)
         setShowInsufficientCoinsModal(true)
         return
@@ -239,15 +239,15 @@ export default function ResultadoPage() {
         console.log("  👟 SHOES ID:", shoesId, "| Tipo:", typeof shoesId)
 
         // 💰 DEDUZIR 1 COIN APÓS SUCESSO DO N8N
-        const deductResult = await deduct(1)
-        if (deductResult.success) {
-          console.log("💰 1 coin deduzido. Novo saldo:", deductResult.balance)
+        const success = deductCoins(1)
+        if (success) {
+          console.log("💰 1 coin deduzido. Novo saldo:", coins - 1)
           toast.info("💰 1 coin debitado", {
-            description: `Saldo restante: ${deductResult.balance} coins`,
+            description: `Saldo restante: ${coins - 1} coins`,
             duration: 3000,
           })
         } else {
-          console.error("❌ Falha ao deduzir coin:", deductResult.message)
+          console.error("❌ Falha ao deduzir coin")
           toast.error("⚠️ Aviso", {
             description: "Não foi possível debitar o coin, mas seu look foi gerado",
             duration: 4000,
@@ -521,7 +521,7 @@ export default function ResultadoPage() {
               Ops! Você precisa de mais coins
             </h2>
             <p className="text-gray-600 mb-4">
-              Você tem <span className="font-bold text-pink-600">{balance} {balance === 1 ? 'coin' : 'coins'}</span> e precisa de <span className="font-bold">1 coin</span> para gerar um look.
+              Você tem <span className="font-bold text-pink-600">{coins} {coins === 1 ? 'coin' : 'coins'}</span> e precisa de <span className="font-bold">1 coin</span> para gerar um look.
             </p>
           </div>
 
@@ -549,7 +549,6 @@ export default function ResultadoPage() {
           open={showCoinStore}
           onClose={() => {
             setShowCoinStore(false)
-            refreshBalance()
             // Depois de fechar a loja, redireciona para o início
             router.push("/")
           }}

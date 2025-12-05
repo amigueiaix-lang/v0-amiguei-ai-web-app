@@ -9,6 +9,7 @@ import Image from "next/image"
 import { useCoins } from "@/hooks/useCoins"
 import { CoinStore } from "@/components/CoinStore"
 import { AmigueiCoin } from "@/components/AmigueiCoin"
+import { toast } from "sonner"
 
 // Interface para a resposta REAL do N8N
 interface LookResponse {
@@ -65,12 +66,11 @@ export default function ResultadoPage() {
       }
 
       // 💰 VALIDAR SALDO DE COINS ANTES DE GERAR LOOK
-      // TEMPORARIAMENTE DESABILITADO PARA TESTES
-      // if (!hasEnough(1)) {
-      //   setLoading(false)
-      //   setShowInsufficientCoinsModal(true)
-      //   return
-      // }
+      if (!hasEnough(1)) {
+        setLoading(false)
+        setShowInsufficientCoinsModal(true)
+        return
+      }
 
       const answersJson = localStorage.getItem("amiguei-quiz-answers")
       if (!answersJson) {
@@ -238,13 +238,21 @@ export default function ResultadoPage() {
         console.log("  👖 BOTTOM ID:", bottomId, "| Tipo:", typeof bottomId)
         console.log("  👟 SHOES ID:", shoesId, "| Tipo:", typeof shoesId)
 
-        // 💰 DEDUZIR 1 COIN APÓS SUCESSO - TEMPORARIAMENTE DESABILITADO
-        // const deductResult = await deduct(1)
-        // if (deductResult.success) {
-        //   console.log("💰 1 coin deduzido. Novo saldo:", deductResult.balance)
-        // } else {
-        //   console.error("❌ Falha ao deduzir coin:", deductResult.message)
-        // }
+        // 💰 DEDUZIR 1 COIN APÓS SUCESSO DO N8N
+        const deductResult = await deduct(1)
+        if (deductResult.success) {
+          console.log("💰 1 coin deduzido. Novo saldo:", deductResult.balance)
+          toast.info("💰 1 coin debitado", {
+            description: `Saldo restante: ${deductResult.balance} coins`,
+            duration: 3000,
+          })
+        } else {
+          console.error("❌ Falha ao deduzir coin:", deductResult.message)
+          toast.error("⚠️ Aviso", {
+            description: "Não foi possível debitar o coin, mas seu look foi gerado",
+            duration: 4000,
+          })
+        }
 
         // Buscar itens completos no Supabase (incluindo image_url)
         console.log("\n👕 [DEBUG] ========== BUSCANDO TOP NO SUPABASE ==========")

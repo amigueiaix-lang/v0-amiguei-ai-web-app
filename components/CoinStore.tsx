@@ -6,6 +6,7 @@ import { AmigueiCoin } from "./AmigueiCoin"
 import { useCoins } from "@/hooks/useCoins"
 import { Sparkles, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 interface CoinStoreProps {
   open: boolean
@@ -63,14 +64,41 @@ const COIN_PACKAGES: CoinPackage[] = [
  * <CoinStore open={isOpen} onClose={() => setIsOpen(false)} />
  */
 export function CoinStore({ open, onClose }: CoinStoreProps) {
-  const { balance } = useCoins()
+  const { balance, add } = useCoins()
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null)
 
-  const handlePurchase = (pkg: CoinPackage) => {
+  const handlePurchase = async (pkg: CoinPackage) => {
     setSelectedPackage(pkg.id)
-    // TODO: Integrate with payment gateway (Stripe, Mercado Pago, etc.)
-    alert(`Pagamento em breve!\n\nVocê selecionou:\n${pkg.coins} coins por R$ ${pkg.price.toFixed(2)}`)
-    setSelectedPackage(null)
+
+    try {
+      // Add coins to user's balance
+      const result = await add(pkg.coins, `Purchase of ${pkg.coins} coins package`)
+
+      if (result.success) {
+        // Show success toast
+        toast.success(`✅ Você ganhou ${pkg.coins} Amiguei.Coins!`, {
+          description: `Seu novo saldo é ${result.balance} coins`,
+          duration: 4000,
+        })
+
+        // Close modal after a short delay
+        setTimeout(() => {
+          onClose()
+        }, 1500)
+      } else {
+        // Show error toast
+        toast.error("❌ Erro ao processar compra", {
+          description: result.message || "Tente novamente mais tarde",
+        })
+      }
+    } catch (error) {
+      console.error("Error purchasing coins:", error)
+      toast.error("❌ Erro ao processar compra", {
+        description: "Ocorreu um erro inesperado",
+      })
+    } finally {
+      setSelectedPackage(null)
+    }
   }
 
   return (

@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft, Plus, Trash2, Upload } from "lucide-react"
@@ -18,13 +16,14 @@ import {
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { supabase } from "@/lib/supabase"
 
 interface ClothingItem {
   id: string
   name: string
   category: string
-  imageUrl: string
-  createdAt: number
+  image_url: string
+  created_at: string
 }
 
 const CATEGORIES = [
@@ -47,61 +46,160 @@ const CATEGORIES = [
 export default function ClosetPage() {
   const [items, setItems] = useState<ClothingItem[]>([])
   const [isOpen, setIsOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [newItem, setNewItem] = useState({
     name: "",
     category: "",
-    imageUrl: "",
   })
+  const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string>("")
 
-  // Load items from localStorage on mount
+  // Carregar itens do Supabase (apenas do usuário logado)
   useEffect(() => {
-    const stored = localStorage.getItem("amiguei-closet")
-    if (stored) {
-      setItems(JSON.parse(stored))
-    }
+    loadItems()
   }, [])
 
-  // Save items to localStorage whenever they change
-  useEffect(() => {
-    if (items.length > 0) {
-      localStorage.setItem("amiguei-closet", JSON.stringify(items))
+  const loadItems = async () => {
+    setLoading(true)
+    try {
+      // Pegar usuário logado
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError) throw userError
+      if (!user) {
+        console.error('Usuário não está logado')
+        return
+      }
+
+      // Buscar apenas itens do usuário logado
+      const { data, error } = await supabase
+        .from('closet_items')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setItems(data || [])
+    } catch (error: any) {
+      console.error('Erro ao carregar itens:', error)
+      console.error('Erro detalhado:', error.message, error.details, error.hint)
+    } finally {
+      setLoading(false)
     }
-  }, [items])
+  }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      setImageFile(file)
       const reader = new FileReader()
       reader.onloadend = () => {
-        const result = reader.result as string
-        setImagePreview(result)
-        setNewItem({ ...newItem, imageUrl: result })
+        setImagePreview(reader.result as string)
       }
       reader.readAsDataURL(file)
     }
   }
 
-  const handleAddItem = () => {
-    if (newItem.name && newItem.category && newItem.imageUrl) {
-      const item: ClothingItem = {
-        id: Date.now().toString(),
-        name: newItem.name,
-        category: newItem.category,
-        imageUrl: newItem.imageUrl,
-        createdAt: Date.now(),
+  const handleAddItem = async () => {
+    if (!newItem.name || !newItem.category || !imageFile) {
+      alert('Preencha todos os campos e selecione uma imagem!')
+      return
+    }
+
+    setUploading(true)
+    try {
+      // Pegar usuário logado
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError) throw userError
+      if (!user) {
+        alert('Você precisa estar logado para adicionar peças!')
+        return
       }
-      setItems([...items, item])
-      setNewItem({ name: "", category: "", imageUrl: "" })
+
+      // 1. Upload da imagem para o Storage
+      const fileExt = imageFile.name.split('.').pop()
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`
+      const filePath = fileName
+
+      const { error: uploadError } = await supabase.storage
+        .from('closet-images')
+        .upload(filePath, imageFile)
+
+      if (uploadError) throw uploadError
+
+      // 2. Construir URL pública da imagem
+      const publicUrl = `https://kqmfvzwxlmujsvjgekvz.supabase.co/storage/v1/object/public/closet-images/${filePath}`
+
+      // 3. Salvar item no banco COM user_id
+      const { data, error } = await supabase
+        .from('closet_items')
+        .insert([
+          {
+            name: newItem.name,
+            category: newItem.category,
+            image_url: publicUrl,
+            user_id: user.id, // ← ADICIONADO!
+          }
+        ])
+        .select()
+
+      if (error) throw error
+
+      // Atualizar lista
+      await loadItems()
+      
+      // Resetar formulário
+      setNewItem({ name: "", category: "" })
+      setImageFile(null)
       setImagePreview("")
       setIsOpen(false)
+      
+      alert('Peça adicionada com sucesso!')
+    } catch (error: any) {
+      console.error('❌ ERRO COMPLETO AO ADICIONAR ITEM:')
+      console.error('Message:', error.message)
+      console.error('Details:', error.details)
+      console.error('Hint:', error.hint)
+      console.error('Code:', error.code)
+      console.error('Full error:', error)
+      alert(`Erro ao adicionar item: ${error.message}`)
+    } finally {
+      setUploading(false)
     }
   }
 
-  const handleDeleteItem = (id: string) => {
-    const updatedItems = items.filter((item) => item.id !== id)
-    setItems(updatedItems)
-    localStorage.setItem("amiguei-closet", JSON.stringify(updatedItems))
+  const handleDeleteItem = async (item: ClothingItem) => {
+    if (!confirm(`Tem certeza que deseja deletar "${item.name}"?`)) return
+
+    try {
+      // 1. Extrair nome do arquivo da URL
+      const urlParts = item.image_url.split('/')
+      const fileName = urlParts.slice(-2).join('/') // Pega user_id/filename.jpg
+
+      // 2. Deletar imagem do Storage
+      const { error: storageError } = await supabase.storage
+        .from('closet-images')
+        .remove([fileName])
+
+      if (storageError) console.error('Erro ao deletar imagem:', storageError)
+
+      // 3. Deletar do banco
+      const { error: dbError } = await supabase
+        .from('closet_items')
+        .delete()
+        .eq('id', item.id)
+
+      if (dbError) throw dbError
+
+      // Atualizar lista
+      await loadItems()
+      alert('Peça deletada com sucesso!')
+    } catch (error: any) {
+      console.error('Erro ao deletar item:', error)
+      alert(`Erro: ${error.message}`)
+    }
   }
 
   return (
@@ -114,7 +212,7 @@ export default function ClosetPage() {
             <span className="font-medium">Voltar</span>
           </Link>
           <Logo />
-          <div className="w-20" /> {/* Spacer for centering */}
+          <div className="w-20" />
         </div>
       </header>
 
@@ -172,7 +270,7 @@ export default function ClosetPage() {
                       >
                         {imagePreview ? (
                           <img
-                            src={imagePreview || "/placeholder.svg"}
+                            src={imagePreview}
                             alt="Preview"
                             className="h-full w-full object-cover rounded-lg"
                           />
@@ -183,7 +281,13 @@ export default function ClosetPage() {
                           </div>
                         )}
                       </label>
-                      <Input id="image" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                      <Input 
+                        id="image" 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={handleImageUpload} 
+                      />
                     </div>
                   </div>
                 </div>
@@ -193,18 +297,25 @@ export default function ClosetPage() {
                   </Button>
                   <Button
                     onClick={handleAddItem}
-                    disabled={!newItem.name || !newItem.category || !newItem.imageUrl}
+                    disabled={!newItem.name || !newItem.category || !imageFile || uploading}
                     className="bg-primary text-primary-foreground hover:bg-primary/90"
                   >
-                    Adicionar
+                    {uploading ? 'Adicionando...' : 'Adicionar'}
                   </Button>
                 </div>
               </DialogContent>
             </Dialog>
           </div>
 
-          {/* Items Grid */}
-          {items.length === 0 ? (
+          {/* Loading */}
+          {loading ? (
+            <div className="flex justify-center items-center py-16">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Carregando peças...</p>
+              </div>
+            </div>
+          ) : items.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="w-24 h-24 rounded-full bg-secondary flex items-center justify-center mb-4">
                 <Upload className="w-12 h-12 text-muted-foreground" />
@@ -228,12 +339,12 @@ export default function ClosetPage() {
                 >
                   <div className="aspect-square relative">
                     <img
-                      src={item.imageUrl || "/placeholder.svg"}
+                      src={item.image_url}
                       alt={item.name}
                       className="w-full h-full object-cover"
                     />
                     <button
-                      onClick={() => handleDeleteItem(item.id)}
+                      onClick={() => handleDeleteItem(item)}
                       className="absolute top-2 right-2 p-2 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110"
                       aria-label="Deletar peça"
                     >

@@ -1,324 +1,715 @@
 "use client"
 
-import type React from "react"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabase"
+// TODO: Reativar RefreshCw quando implementar substituição individual no N8N
+import { Loader2, Sparkles, AlertCircle } from "lucide-react"
+import Image from "next/image"
+import { useCoins } from "@/hooks/useCoins"
+import { CoinStore } from "@/components/CoinStore"
+import { AmigueiCoin } from "@/components/AmigueiCoin"
 
-import { useState, useEffect, useRef } from "react"
-import Link from "next/link"
-import { ArrowLeft, Send, Sparkles } from "lucide-react"
-import { Logo } from "@/components/logo"
-
-type Message = {
-  id: string
-  role: "user" | "assistant"
-  content: string
-  look?: {
-    top?: ClothingItem
-    bottom?: ClothingItem
-    shoes?: ClothingItem
-    explanation: string
-  }
+// Interface para a resposta REAL do N8N
+interface LookResponse {
+  success: boolean
+  message: string
+  top_item_id: string
+  top_item_name: string
+  bottom_item_id: string
+  bottom_item_name: string
+  shoes_item_id: string
+  shoes_item_name: string
+  reasoning: string
 }
 
-interface ClothingItem {
-  id: string
-  name: string
-  category: string
-  imageUrl: string
+// Interface para o look processado (depois de buscar no Supabase)
+interface ProcessedLook {
+  top: { id: string; name: string; image_url: string }
+  bottom: { id: string; name: string; image_url: string }
+  shoes: { id: string; name: string; image_url: string }
+  reasoning: string
 }
 
-export default function QuizResultPage() {
-  const [answers, setAnswers] = useState<Record<number, string>>({})
-  const [messages, setMessages] = useState<Message[]>([])
-  const [input, setInput] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+export default function ResultadoPage() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [look, setLook] = useState<ProcessedLook | null>(null)
+  const [lookImages, setLookImages] = useState<{
+    top: string | null
+    bottom: string | null
+    shoes: string | null
+  }>({ top: null, bottom: null, shoes: null })
+  // TODO: Reativar quando implementar substituição individual no N8N
+  // const [refreshingItem, setRefreshingItem] = useState<'top' | 'bottom' | 'shoes' | null>(null)
+  const [showInsufficientCoinsModal, setShowInsufficientCoinsModal] = useState(false)
+  const [showCoinStore, setShowCoinStore] = useState(false)
+  const { balance, deduct, hasEnough, refresh: refreshBalance } = useCoins()
 
   useEffect(() => {
-    // Load quiz answers from localStorage
-    const stored = localStorage.getItem("amiguei-quiz-answers")
-    if (stored) {
-      const parsedAnswers = JSON.parse(stored)
-      setAnswers(parsedAnswers)
-      generateLookFromCloset(parsedAnswers)
-    }
+    generateLook()
   }, [])
 
-  useEffect(() => {
-    // Auto-scroll to bottom when new messages arrive
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+  const generateLook = async () => {
+    try {
+      setLoading(true)
+      setError(null)
 
-  const generateLookFromCloset = (quizAnswers: Record<number, string>) => {
-    // Load closet items
-    const closetStored = localStorage.getItem("amiguei-closet")
-    if (!closetStored) {
-      // No items in closet, show generic message
-      const genericMessage: Message = {
-        id: Date.now().toString(),
-        role: "assistant",
-        content:
-          "Percebi que seu closet ainda está vazio! Adicione algumas peças ao seu closet primeiro para que eu possa montar looks personalizados para você. 😊",
+      // Pegar usuário logado
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+      if (userError || !user) {
+        setError("Você precisa estar logado para gerar looks!")
+        return
       }
-      setMessages([genericMessage])
-      return
+
+      // 💰 VALIDAR SALDO DE COINS ANTES DE GERAR LOOK
+      // TEMPORARIAMENTE DESABILITADO PARA TESTES
+      // if (!hasEnough(1)) {
+      //   setLoading(false)
+      //   setShowInsufficientCoinsModal(true)
+      //   return
+      // }
+
+      const answersJson = localStorage.getItem("amiguei-quiz-answers")
+      if (!answersJson) {
+        setError("Respostas do quiz não encontradas")
+        return
+      }
+
+      const answers = JSON.parse(answersJson)
+      const quizResponses = {
+        occasion: answers[0]?.toLowerCase() || "casual",
+        climate: answers[1]?.toLowerCase() || "ameno",
+        style: answers[2]?.toLowerCase() || "confortável",
+        preferred_colors: answers[3] || "sem preferência",
+        extra_info: answers[4] || "",
+      }
+
+      const payload = {
+        user_id: user.id,
+        quiz_responses: quizResponses,
+      }
+
+      console.log("🚀 [1/5] Iniciando requisição para N8N...")
+      console.log("📦 [2/5] Payload completo:", JSON.stringify(payload, null, 2))
+      console.log("🌐 [3/5] URL:", "https://amiguei.app.n8n.cloud/webhook/outfit-generator")
+
+      const response = await fetch("https://amiguei.app.n8n.cloud/webhook/outfit-generator", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+
+      console.log("✅ [4/5] Resposta recebida!")
+      console.log("📡 Status:", response.status, response.statusText)
+      console.log("📄 Headers:", {
+        contentType: response.headers.get('content-type'),
+        contentLength: response.headers.get('content-length'),
+        server: response.headers.get('server'),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error("❌ Erro do N8N:", errorText)
+        throw new Error(`Erro ${response.status}: ${errorText}`)
+      }
+
+      const responseText = await response.text()
+      console.log("📦 [5/5] Response text recebido:", responseText.substring(0, 200) + (responseText.length > 200 ? '...' : ''))
+
+      if (!responseText) {
+        throw new Error("N8N retornou resposta vazia")
+      }
+
+      const rawData = JSON.parse(responseText)
+      console.log("✅ [SUCESSO] Data parsed (RAW):", rawData)
+
+      // 🐛 DEBUG: Verificar estrutura completa do look
+      console.log("📦 [DEBUG] ========== RESPOSTA COMPLETA DO N8N (RAW) ==========")
+      console.log(JSON.stringify(rawData, null, 2))
+      console.log("========================================")
+
+      console.log("🎯 [DEBUG] Tipo da resposta:", typeof rawData)
+      console.log("📦 [DEBUG] É array?", Array.isArray(rawData))
+      console.log("📦 [DEBUG] Length (se array):", Array.isArray(rawData) ? rawData.length : "N/A")
+
+      // ✅ CORREÇÃO: N8N retorna ARRAY [{...}], não OBJETO {...}
+      const data = Array.isArray(rawData) ? rawData[0] : rawData
+
+      console.log("🔍 ========== JSON COMPLETO DE data (ROOT) ==========")
+      console.log(JSON.stringify(data, null, 2))
+      console.log("🔍 ========== FIM JSON ==========")
+
+      console.log("🔍 ============ DEBUGGING ESTRUTURA COMPLETA ============")
+      console.log("📦 data completo:", JSON.stringify(data, null, 2))
+      console.log("📦 data.look existe?", !!data.look)
+      console.log("📦 data.look completo:", JSON.stringify(data.look, null, 2))
+      console.log("📦 Tipo de data.look:", typeof data.look)
+      console.log("📦 É array?", Array.isArray(data.look))
+
+      // Se data.look for objeto, mostre suas chaves:
+      if (data.look && typeof data.look === 'object') {
+        console.log("🔑 Chaves dentro de data.look:", Object.keys(data.look))
+      }
+
+      // Tentar diferentes acessos:
+      console.log("🧪 TESTE 1 - data.look.top_item_id:", data.look?.top_item_id)
+      console.log("🧪 TESTE 2 - data.look.top?.id:", data.look?.top?.id)
+      console.log("🧪 TESTE 3 - data.look.top?.item_id:", data.look?.top?.item_id)
+      console.log("🧪 TESTE 4 - data.top_item_id (root):", data.top_item_id)
+
+      console.log("🔍 ============ FIM DEBUG ============")
+
+      console.log("\n📦 [DEBUG] ========== OBJETO EXTRAÍDO (lookData) ==========")
+      console.log("Tipo do data:", typeof data)
+      console.log("Keys do data:", Object.keys(data))
+      console.log(JSON.stringify(data, null, 2))
+      console.log("========================================")
+
+      console.log("\n🔍 [DEBUG] ========== ACESSO DIRETO AOS CAMPOS ==========")
+      console.log("🆔 [DEBUG] Estrutura do objeto data:")
+      console.log("  data.success:", data.success)
+      console.log("  data.message:", data.message)
+      console.log("  data.look existe?", "look" in data)
+
+      console.log("\n🆔 [DEBUG] IDs no ROOT de data:")
+      console.log("  👕 data.top_item_id:", data.top_item_id)
+      console.log("  👕 Tipo:", typeof data.top_item_id)
+
+      console.log("  👖 data.bottom_item_id:", data.bottom_item_id)
+      console.log("  👖 Tipo:", typeof data.bottom_item_id)
+
+      console.log("  👟 data.shoes_item_id:", data.shoes_item_id)
+      console.log("  👟 Tipo:", typeof data.shoes_item_id)
+
+      console.log("\n📝 [DEBUG] Nomes no ROOT de data:")
+      console.log("  👕 data.top_item_name:", data.top_item_name)
+      console.log("  👖 data.bottom_item_name:", data.bottom_item_name)
+      console.log("  👟 data.shoes_item_name:", data.shoes_item_name)
+
+      console.log("\n📝 [DEBUG] Reasoning:")
+      console.log("  data.reasoning:", data.reasoning)
+
+      console.log("\n🔍 [DEBUG] Verificando se success existe:")
+      console.log("  'success' in data:", "success" in data)
+      console.log("  data.success === true:", data.success === true)
+      console.log("  !!data.success:", !!data.success)
+
+      console.log('🔍 ========== JSON COMPLETO (STRINGIFIED) ==========')
+      console.log(JSON.stringify(data, null, 2))
+      console.log('🔍 ========== FIM ==========')
+
+      // Estrutura correta: data.look.top.id, data.look.bottom.id, etc
+      const topId = data?.look?.top?.id
+      const topName = data?.look?.top?.name
+      const bottomId = data?.look?.bottom?.id
+      const bottomName = data?.look?.bottom?.name
+      const shoesId = data?.look?.shoes?.id
+      const shoesName = data?.look?.shoes?.name
+      const reasoning = data?.reasoning
+
+      console.log('🎯 [DEBUG] IDs EXTRAÍDOS (estrutura corrigida):')
+      console.log('  topId:', topId, '| Tipo:', typeof topId)
+      console.log('  topName:', topName)
+      console.log('  bottomId:', bottomId, '| Tipo:', typeof bottomId)
+      console.log('  bottomName:', bottomName)
+      console.log('  shoesId:', shoesId, '| Tipo:', typeof shoesId)
+      console.log('  shoesName:', shoesName)
+      console.log('  reasoning:', reasoning)
+
+      // Verificar se os IDs são válidos antes de prosseguir
+      if (!topId || !bottomId || !shoesId) {
+        console.error("❌❌❌ IDs INVÁLIDOS DETECTADOS! ❌❌❌")
+        console.error("topId válido?", !!topId)
+        console.error("bottomId válido?", !!bottomId)
+        console.error("shoesId válido?", !!shoesId)
+        console.error("Objeto completo recebido:", data)
+        throw new Error("IDs das peças não foram retornados pelo N8N")
+      }
+
+      console.log("\n✅ [DEBUG] Todos os IDs são válidos! Prosseguindo com busca no Supabase...")
+
+      if (data.success !== undefined ? data.success : true) { // Permitir continuar mesmo se success não existir
+        console.log("\n\n🔍 [DEBUG] ========== INICIANDO BUSCA DE ITENS NO SUPABASE ==========")
+        console.log("🔍 [DEBUG] Usando IDs extraídos do ROOT de data:")
+        console.log("  👕 TOP ID:", topId, "| Tipo:", typeof topId)
+        console.log("  👖 BOTTOM ID:", bottomId, "| Tipo:", typeof bottomId)
+        console.log("  👟 SHOES ID:", shoesId, "| Tipo:", typeof shoesId)
+
+        // 💰 DEDUZIR 1 COIN APÓS SUCESSO - TEMPORARIAMENTE DESABILITADO
+        // const deductResult = await deduct(1)
+        // if (deductResult.success) {
+        //   console.log("💰 1 coin deduzido. Novo saldo:", deductResult.balance)
+        // } else {
+        //   console.error("❌ Falha ao deduzir coin:", deductResult.message)
+        // }
+
+        // Buscar itens completos no Supabase (incluindo image_url)
+        console.log("\n👕 [DEBUG] ========== BUSCANDO TOP NO SUPABASE ==========")
+        console.log("👕 [DEBUG] Usando variável topId:", topId)
+        console.log("👕 [DEBUG] Tipo do ID:", typeof topId)
+        console.log("👕 [DEBUG] Query: SELECT * FROM closet_items WHERE id =", topId)
+
+        const { data: topItem, error: topError } = await supabase
+          .from("closet_items")
+          .select("*")
+          .eq("id", topId)
+          .single()
+
+        console.log("👕 [DEBUG] ========== RESULTADO DA BUSCA TOP ==========")
+        console.log("👕 [DEBUG] Item encontrado:", topItem)
+        console.log("👕 [DEBUG] Erro:", topError)
+        if (topError) {
+          console.error("👕 [DEBUG] ❌ Código do erro:", topError.code)
+          console.error("👕 [DEBUG] ❌ Mensagem:", topError.message)
+          console.error("👕 [DEBUG] ❌ Detalhes:", topError.details)
+        }
+        if (topItem) {
+          console.log("👕 [DEBUG] ✅ ID do item:", topItem.id)
+          console.log("👕 [DEBUG] ✅ Nome do item:", topItem.name)
+          console.log("👕 [DEBUG] ✅ Image URL:", topItem.image_url)
+        }
+
+        console.log("\n👖 [DEBUG] ========== BUSCANDO BOTTOM NO SUPABASE ==========")
+        console.log("👖 [DEBUG] Usando variável bottomId:", bottomId)
+        console.log("👖 [DEBUG] Tipo do ID:", typeof bottomId)
+
+        const { data: bottomItem, error: bottomError } = await supabase
+          .from("closet_items")
+          .select("*")
+          .eq("id", bottomId)
+          .single()
+
+        console.log("👖 [DEBUG] ========== RESULTADO DA BUSCA BOTTOM ==========")
+        console.log("👖 [DEBUG] Item encontrado:", bottomItem)
+        console.log("👖 [DEBUG] Erro:", bottomError)
+        if (bottomError) {
+          console.error("👖 [DEBUG] ❌ Código do erro:", bottomError.code)
+        }
+        if (bottomItem) {
+          console.log("👖 [DEBUG] ✅ Nome:", bottomItem.name)
+          console.log("👖 [DEBUG] ✅ Image URL:", bottomItem.image_url)
+        }
+
+        console.log("\n👟 [DEBUG] ========== BUSCANDO SHOES NO SUPABASE ==========")
+        console.log("👟 [DEBUG] Usando variável shoesId:", shoesId)
+        console.log("👟 [DEBUG] Tipo do ID:", typeof shoesId)
+
+        const { data: shoesItem, error: shoesError } = await supabase
+          .from("closet_items")
+          .select("*")
+          .eq("id", shoesId)
+          .single()
+
+        console.log("👟 [DEBUG] ========== RESULTADO DA BUSCA SHOES ==========")
+        console.log("👟 [DEBUG] Item encontrado:", shoesItem)
+        console.log("👟 [DEBUG] Erro:", shoesError)
+        if (shoesError) {
+          console.error("👟 [DEBUG] ❌ Código do erro:", shoesError.code)
+        }
+        if (shoesItem) {
+          console.log("👟 [DEBUG] ✅ Nome:", shoesItem.name)
+          console.log("👟 [DEBUG] ✅ Image URL:", shoesItem.image_url)
+        }
+
+        // Verificar se todos os itens foram encontrados
+        if (!topItem || !bottomItem || !shoesItem) {
+          console.error("❌ [DEBUG] Algum item não foi encontrado no Supabase!")
+          console.error("  TOP:", topItem ? "✅ FOUND" : "❌ NOT FOUND")
+          console.error("  BOTTOM:", bottomItem ? "✅ FOUND" : "❌ NOT FOUND")
+          console.error("  SHOES:", shoesItem ? "✅ FOUND" : "❌ NOT FOUND")
+          throw new Error("Itens do look não encontrados no banco de dados")
+        }
+
+        console.log("\n🖼️ [DEBUG] ========== CONSTRUINDO LOOK PROCESSADO ==========")
+        console.log("🖼️ [DEBUG] TOP image_url:", topItem.image_url)
+        console.log("🖼️ [DEBUG] BOTTOM image_url:", bottomItem.image_url)
+        console.log("🖼️ [DEBUG] SHOES image_url:", shoesItem.image_url)
+
+        // Construir o look processado com os dados completos do Supabase
+        const processedLook: ProcessedLook = {
+          top: {
+            id: topItem.id,
+            name: topItem.name,
+            image_url: topItem.image_url
+          },
+          bottom: {
+            id: bottomItem.id,
+            name: bottomItem.name,
+            image_url: bottomItem.image_url
+          },
+          shoes: {
+            id: shoesItem.id,
+            name: shoesItem.name,
+            image_url: shoesItem.image_url
+          },
+          reasoning: reasoning || "Look criado com sucesso!"
+        }
+
+        console.log("🖼️ [DEBUG] Look processado criado:", processedLook)
+
+        // Salvar look processado no state
+        setLook(processedLook)
+
+        // Salvar imagens separadamente para o estado de imagens
+        setLookImages({
+          top: topItem.image_url,
+          bottom: bottomItem.image_url,
+          shoes: shoesItem.image_url,
+        })
+
+        console.log("🖼️ [DEBUG] ✅ States atualizados com sucesso!")
+        console.log("🖼️ [DEBUG] Resumo final:")
+        console.log("  👕 TOP:", topItem.name, topItem.image_url ? `(${topItem.image_url.substring(0, 50)}...)` : "")
+        console.log("  👖 BOTTOM:", bottomItem.name, bottomItem.image_url ? `(${bottomItem.image_url.substring(0, 50)}...)` : "")
+        console.log("  👟 SHOES:", shoesItem.name, shoesItem.image_url ? `(${shoesItem.image_url.substring(0, 50)}...)` : "")
+        console.log("========================================\n\n")
+      }
+    } catch (err: any) {
+      console.error("❌ ============ ERRO CAPTURADO ============")
+      console.error("Tipo do erro:", err.constructor.name)
+      console.error("Mensagem:", err.message)
+      console.error("Stack trace:", err.stack)
+      console.error("Erro completo:", err)
+
+      // Logs adicionais para erros de rede
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        console.error("🔴 ERRO DE REDE DETECTADO!")
+        console.error("Possíveis causas:")
+        console.error("1. CORS bloqueado pelo N8N")
+        console.error("2. N8N workflow não está ativo")
+        console.error("3. URL incorreta ou N8N fora do ar")
+        console.error("4. Problema de certificado SSL")
+      }
+
+      console.error("==========================================")
+      setError(err.message || "Erro ao gerar seu look")
+    } finally {
+      setLoading(false)
     }
+  }
 
-    const closetItems: ClothingItem[] = JSON.parse(closetStored)
+  // TODO: Implementar no N8N antes de reativar
+  // Esta função requer modificação no workflow N8N para processar replace_only
+  /*
+  const refreshSingleItem = async (itemType: 'top' | 'bottom' | 'shoes') => {
+    if (!look) return
 
-    // Filter items by category
-    const topItems = closetItems.filter((item) =>
-      ["Camiseta", "Blusa", "Camisa", "Jaqueta", "Casaco"].includes(item.category),
+    try {
+      setRefreshingItem(itemType)
+      setError(null)
+
+      // Pegar usuário logado
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+      if (userError || !user) {
+        setError("Você precisa estar logado para gerar looks!")
+        return
+      }
+
+      const answersJson = localStorage.getItem("amiguei-quiz-answers")
+      if (!answersJson) {
+        setError("Respostas do quiz não encontradas")
+        return
+      }
+
+      const answers = JSON.parse(answersJson)
+      const quizResponses = {
+        occasion: answers[0]?.toLowerCase() || "casual",
+        climate: answers[1]?.toLowerCase() || "ameno",
+        style: answers[2]?.toLowerCase() || "confortável",
+        preferred_colors: answers[3] || "sem preferência",
+        extra_info: answers[4] || "",
+      }
+
+      // Montar keep_items com as peças que NÃO devem ser trocadas
+      const keepItems: Record<string, string> = {}
+      if (itemType !== 'top') keepItems.top_item_id = look.look.top.id
+      if (itemType !== 'bottom') keepItems.bottom_item_id = look.look.bottom.id
+      if (itemType !== 'shoes') keepItems.shoes_item_id = look.look.shoes.id
+
+      const payload = {
+        user_id: user.id,
+        quiz_responses: quizResponses,
+        replace_only: itemType,
+        keep_items: keepItems,
+      }
+
+      console.log(`🔄 [REFRESH-1/5] Trocando apenas ${itemType}...`)
+      console.log(`📦 [REFRESH-2/5] Payload:`, JSON.stringify(payload, null, 2))
+      console.log(`🌐 [REFRESH-3/5] URL:`, "https://amiguei.app.n8n.cloud/webhook/outfit-generator")
+
+      const response = await fetch("https://amiguei.app.n8n.cloud/webhook/outfit-generator", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+
+      console.log(`✅ [REFRESH-4/5] Resposta recebida!`)
+      console.log(`📡 Status:`, response.status, response.statusText)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error("❌ Erro do N8N:", errorText)
+        throw new Error(`Erro ${response.status}: ${errorText}`)
+      }
+
+      const responseText = await response.text()
+      console.log(`📦 [REFRESH-5/5] Response text:`, responseText.substring(0, 200) + (responseText.length > 200 ? '...' : ''))
+
+      if (!responseText) {
+        throw new Error("N8N retornou resposta vazia")
+      }
+
+      const data: LookResponse = JSON.parse(responseText)
+      console.log(`✅ [REFRESH-SUCESSO] ${itemType} atualizado:`, data.look?.[itemType])
+
+      // Atualizar apenas a peça específica no estado
+      if (data.success && data.look) {
+        setLook(data)
+
+        // Buscar nova imagem apenas para o item atualizado
+        const newImage = await getItemImage(data.look[itemType].id)
+        setLookImages(prev => ({
+          ...prev,
+          [itemType]: newImage,
+        }))
+      }
+    } catch (err: any) {
+      console.error(`❌ ========== ERRO AO TROCAR ${itemType.toUpperCase()} ==========`)
+      console.error("Tipo do erro:", err.constructor.name)
+      console.error("Mensagem:", err.message)
+      console.error("Stack trace:", err.stack)
+      console.error("Erro completo:", err)
+
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        console.error("🔴 ERRO DE REDE DETECTADO no refresh!")
+        console.error("Possíveis causas: CORS, workflow inativo, URL incorreta, SSL")
+      }
+
+      console.error("==========================================")
+      setError(err.message || `Erro ao trocar ${itemType}`)
+    } finally {
+      setRefreshingItem(null)
+    }
+  }
+  */
+
+  // Modal de coins insuficientes
+  if (showInsufficientCoinsModal) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+          <div className="text-center mb-6">
+            <div className="flex justify-center mb-4">
+              <div className="relative">
+                <AmigueiCoin size="xlarge" />
+                <AlertCircle className="absolute -bottom-1 -right-1 w-8 h-8 text-red-500 bg-white rounded-full p-1" />
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Ops! Você precisa de mais coins
+            </h2>
+            <p className="text-gray-600 mb-4">
+              Você tem <span className="font-bold text-pink-600">{balance} {balance === 1 ? 'coin' : 'coins'}</span> e precisa de <span className="font-bold">1 coin</span> para gerar um look.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <button
+              onClick={() => {
+                setShowInsufficientCoinsModal(false)
+                setShowCoinStore(true)
+              }}
+              className="w-full px-6 py-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-xl font-semibold hover:from-pink-600 hover:to-pink-700 transition-all shadow-md hover:shadow-lg"
+            >
+              Comprar Amiguei.Coins
+            </button>
+            <button
+              onClick={() => router.push("/")}
+              className="w-full px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all"
+            >
+              Voltar ao início
+            </button>
+          </div>
+        </div>
+
+        {/* Coin Store Modal */}
+        <CoinStore
+          open={showCoinStore}
+          onClose={() => {
+            setShowCoinStore(false)
+            refreshBalance()
+            // Depois de fechar a loja, redireciona para o início
+            router.push("/")
+          }}
+        />
+      </div>
     )
-    const bottomItems = closetItems.filter((item) => ["Calça", "Short", "Saia", "Vestido"].includes(item.category))
-    const shoesItems = closetItems.filter((item) => ["Sapato", "Tênis", "Sandália"].includes(item.category))
-
-    // Select random pieces (in a real app, this would be based on quiz answers)
-    const selectedTop = topItems.length > 0 ? topItems[Math.floor(Math.random() * topItems.length)] : undefined
-    const selectedBottom =
-      bottomItems.length > 0 ? bottomItems[Math.floor(Math.random() * bottomItems.length)] : undefined
-    const selectedShoes = shoesItems.length > 0 ? shoesItems[Math.floor(Math.random() * shoesItems.length)] : undefined
-
-    if (!selectedTop && !selectedBottom && !selectedShoes) {
-      const noItemsMessage: Message = {
-        id: Date.now().toString(),
-        role: "assistant",
-        content:
-          "Não encontrei peças suficientes no seu closet para montar um look completo. Adicione mais peças (blusas, calças, tênis) para que eu possa criar sugestões personalizadas! 😊",
-      }
-      setMessages([noItemsMessage])
-      return
-    }
-
-    // Generate explanation based on quiz answers
-    const occasion = quizAnswers[1] || "seu dia"
-    const formality = quizAnswers[2] || "casual"
-    const style = quizAnswers[3] || "confortável"
-
-    let explanation = `Para ${occasion}, montei este look que combina ${formality} e ${style}. `
-
-    if (selectedTop) {
-      explanation += `A ${selectedTop.name} traz um toque elegante e versátil. `
-    }
-    if (selectedBottom) {
-      explanation += `A ${selectedBottom.name} complementa perfeitamente o visual. `
-    }
-    if (selectedShoes) {
-      explanation += `O ${selectedShoes.name} finaliza o look com estilo e conforto. `
-    }
-
-    explanation += "Esse conjunto reflete sua personalidade e é perfeito para a ocasião!"
-
-    const lookMessage: Message = {
-      id: Date.now().toString(),
-      role: "assistant",
-      content: "Baseado no seu quiz, montei este look para você:",
-      look: {
-        top: selectedTop,
-        bottom: selectedBottom,
-        shoes: selectedShoes,
-        explanation,
-      },
-    }
-
-    setMessages([lookMessage])
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim() || isLoading) return
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: input,
-    }
-
-    setMessages((prev) => [...prev, userMessage])
-    setInput("")
-    setIsLoading(true)
-
-    // Mock AI response
-    setTimeout(() => {
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content:
-          "Obrigada pela sua pergunta! Como assistente de moda, posso ajudar você a encontrar o look perfeito. No momento, estou em modo de demonstração, mas em breve terei respostas ainda mais personalizadas! 😊",
-      }
-      setMessages((prev) => [...prev, aiMessage])
-      setIsLoading(false)
-    }, 1500)
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-purple-50">
+        <div className="text-center">
+          <Loader2 className="w-16 h-16 text-pink-500 animate-spin mx-auto mb-4" />
+          <h2 className="text-2xl font-semibold mb-2">Criando seu look perfeito...</h2>
+          <p className="text-gray-600">Nossa IA está trabalhando</p>
+        </div>
+      </div>
+    )
   }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <p className="text-red-500 mb-4">{error}</p>
+          <button
+            onClick={() => router.push("/quiz")}
+            className="px-6 py-3 bg-pink-500 text-white rounded-lg"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!look) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-600">Não foi possível gerar um look</p>
+      </div>
+    )
+  }
+
+  // 🖼️ DEBUG: Log das imagens no render
+  console.log("🎨 [RENDER] lookImages state:", lookImages)
+  console.log("🎨 [RENDER] TOP image URL:", lookImages.top)
+  console.log("🎨 [RENDER] BOTTOM image URL:", lookImages.bottom)
+  console.log("🎨 [RENDER] SHOES image URL:", lookImages.shoes)
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="bg-white border-b border-gray-200 h-[60px] flex items-center px-6">
-        <div className="w-full flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-black hover:text-[#FF69B4] transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Voltar</span>
-          </Link>
-          <div className="max-w-[150px]">
-            <Logo />
-          </div>
-          <div className="w-20" />
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 p-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold mb-2">Seu Look Perfeito!</h1>
+          <p className="text-gray-600">Criado especialmente para você</p>
         </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="flex-1 px-4 pt-8 pb-8">
-        <div className="container mx-auto max-w-4xl">
-          <div className="mb-8">
-            <h1 className="text-3xl font-serif font-bold mb-2">Seu Look Perfeito</h1>
-            <p className="text-gray-600">Baseado nas suas preferências, aqui está nossa sugestão</p>
-          </div>
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+          {/* Container centralizado com max-width de 400px */}
+          <div className="max-w-[400px] mx-auto mb-8">
+            <div className="flex flex-col items-center">
 
-          {/* Chat Interface */}
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">
-            {/* Messages */}
-            <div className="min-h-[500px] max-h-[600px] overflow-y-auto p-6 space-y-6">
-              {messages.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-center">
-                  <div>
-                    <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                      <Sparkles className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <p className="text-gray-600">Montando seu look perfeito...</p>
-                  </div>
+              {/* BLUSA - maior z-index */}
+              <div className="text-center w-full relative z-30">
+                <div className="max-w-[300px] mx-auto h-[280px] bg-white rounded-xl overflow-hidden relative shadow-md">
+                  {/* TODO: Reativar botão de refresh quando implementar no N8N */}
+
+                  {lookImages.top ? (
+                    <>
+                      {console.log("🎨 [RENDER] Renderizando TOP image:", lookImages.top)}
+                      <Image
+                        src={lookImages.top}
+                        alt={look.top.name}
+                        fill
+                        className="object-contain"
+                        unoptimized
+                      />
+                    </>
+                  ) : (
+                    <>
+                      {console.log("🎨 [RENDER] TOP image NULL - mostrando loader")}
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                      </div>
+                    </>
+                  )}
                 </div>
-              ) : (
-                messages.map((message) => (
-                  <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                    {message.role === "assistant" ? (
-                      <div className="max-w-[85%]">
-                        <div className="flex items-start gap-3 mb-3">
-                          <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0">
-                            <Sparkles className="w-5 h-5 text-[#FF69B4]" />
-                          </div>
-                          <div className="flex-1 bg-gray-100 rounded-2xl px-5 py-4">
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                          </div>
-                        </div>
-
-                        {message.look && (
-                          <div className="ml-13 bg-gray-50 rounded-xl p-4">
-                            {/* Stacked outfit images */}
-                            <div className="flex flex-col items-center max-w-[280px] mx-auto bg-white rounded-xl overflow-hidden shadow-sm">
-                              {message.look.top && (
-                                <div className="w-full">
-                                  <img
-                                    src={message.look.top.imageUrl || "/placeholder.svg"}
-                                    alt={message.look.top.name}
-                                    className="w-full h-auto object-cover"
-                                  />
-                                  <div className="px-3 py-2 bg-white border-b border-gray-100">
-                                    <p className="text-sm font-medium text-center">{message.look.top.name}</p>
-                                  </div>
-                                </div>
-                              )}
-                              {message.look.bottom && (
-                                <div className="w-full">
-                                  <img
-                                    src={message.look.bottom.imageUrl || "/placeholder.svg"}
-                                    alt={message.look.bottom.name}
-                                    className="w-full h-auto object-cover"
-                                  />
-                                  <div className="px-3 py-2 bg-white border-b border-gray-100">
-                                    <p className="text-sm font-medium text-center">{message.look.bottom.name}</p>
-                                  </div>
-                                </div>
-                              )}
-                              {message.look.shoes && (
-                                <div className="w-full">
-                                  <img
-                                    src={message.look.shoes.imageUrl || "/placeholder.svg"}
-                                    alt={message.look.shoes.name}
-                                    className="w-full h-auto object-cover"
-                                  />
-                                  <div className="px-3 py-2 bg-white">
-                                    <p className="text-sm font-medium text-center">{message.look.shoes.name}</p>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Explanation */}
-                            <div className="mt-4 px-2">
-                              <p className="text-sm font-semibold mb-2">Por que escolhi essas peças:</p>
-                              <p className="text-sm text-gray-700 leading-relaxed">{message.look.explanation}</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      // User message
-                      <div className="max-w-[80%] bg-gradient-to-r from-[#FF69B4] to-[#E91E63] text-white rounded-2xl px-5 py-3">
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0">
-                      <Sparkles className="w-5 h-5 text-[#FF69B4]" />
-                    </div>
-                    <div className="bg-gray-100 rounded-2xl px-5 py-3">
-                      <div className="flex gap-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.4s]" />
-                      </div>
-                    </div>
-                  </div>
+                <div className="mt-3 mb-2">
+                  <p className="font-medium text-sm text-gray-500 uppercase mb-1">Top</p>
+                  <p className="font-bold">{look.top.name}</p>
                 </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Chat input section */}
-            <div className="border-t border-gray-200 bg-gray-50 p-4">
-              <div className="mb-3">
-                <h3 className="font-semibold text-sm">💬 Converse com o Amiguei.AI</h3>
-                <p className="text-xs text-gray-600">Faça perguntas ou peça mais sugestões</p>
               </div>
-              <form onSubmit={handleSubmit} className="flex gap-2">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Digite sua mensagem..."
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF69B4] focus:border-transparent"
-                  disabled={isLoading}
-                />
-                <button
-                  type="submit"
-                  disabled={isLoading || !input.trim()}
-                  className="px-4 py-2 bg-[#FF69B4] text-white rounded-lg hover:bg-[#FF1493] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </form>
+
+              {/* CALÇA - z-index médio, sobrepõe a blusa */}
+              <div className="text-center w-full relative z-20 -mt-8">
+                <div className="max-w-[300px] mx-auto h-[320px] bg-white rounded-xl overflow-hidden relative shadow-md">
+                  {/* TODO: Reativar botão de refresh quando implementar no N8N */}
+
+                  {lookImages.bottom ? (
+                    <Image
+                      src={lookImages.bottom}
+                      alt={look.bottom.name}
+                      fill
+                      className="object-contain"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                <div className="mt-3 mb-2">
+                  <p className="font-medium text-sm text-gray-500 uppercase mb-1">Bottom</p>
+                  <p className="font-bold">{look.bottom.name}</p>
+                </div>
+              </div>
+
+              {/* TÊNIS - menor z-index, sobrepõe a calça */}
+              <div className="text-center w-full relative z-10 -mt-8">
+                <div className="max-w-[300px] mx-auto h-[200px] bg-white rounded-xl overflow-hidden relative shadow-md">
+                  {/* TODO: Reativar botão de refresh quando implementar no N8N */}
+
+                  {lookImages.shoes ? (
+                    <Image
+                      src={lookImages.shoes}
+                      alt={look.shoes.name}
+                      fill
+                      className="object-contain"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                <div className="mt-3">
+                  <p className="font-medium text-sm text-gray-500 uppercase mb-1">Shoes</p>
+                  <p className="font-bold">{look.shoes.name}</p>
+                </div>
+              </div>
+
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-4">
-            <Link href="/quiz" className="flex-1">
-              <button className="w-full px-6 py-3 border-2 border-black rounded-lg font-medium hover:bg-gray-50 transition-colors">
-                Refazer Quiz
-              </button>
-            </Link>
-            <Link href="/" className="flex-1">
-              <button className="w-full px-6 py-3 bg-[#FF69B4] text-white rounded-lg font-medium hover:bg-[#FF1493] transition-colors">
-                Voltar ao Início
-              </button>
-            </Link>
+          <div className="bg-pink-50 border border-pink-200 rounded-xl p-6">
+            <h3 className="font-bold text-xl mb-3 text-pink-600">Por que esse look?</h3>
+            <p className="text-gray-700 leading-relaxed">{look.reasoning}</p>
           </div>
         </div>
-      </main>
+
+        <div className="flex gap-4 justify-center">
+          <button
+            onClick={generateLook}
+            className="px-8 py-4 border-2 border-pink-500 text-pink-500 rounded-xl font-semibold"
+          >
+            Gerar outro look
+          </button>
+          <button
+            onClick={() => router.push("/")}
+            className="px-8 py-4 bg-pink-500 text-white rounded-xl font-semibold"
+          >
+            Ir para o início
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

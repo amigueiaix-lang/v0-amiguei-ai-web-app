@@ -4,11 +4,8 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 // TODO: Reativar RefreshCw quando implementar substituição individual no N8N
-import { Loader2, Sparkles, AlertCircle } from "lucide-react"
+import { Loader2, ArrowLeft, Share2, Check } from "lucide-react"
 import Image from "next/image"
-import { useCoins } from "@/contexts/CoinsContext"
-import { CoinStore } from "@/components/CoinStore"
-import { AmigueiCoin } from "@/components/AmigueiCoin"
 import { toast } from "sonner"
 
 // Interface para a resposta REAL do N8N
@@ -44,9 +41,8 @@ export default function ResultadoPage() {
   }>({ top: null, bottom: null, shoes: null })
   // TODO: Reativar quando implementar substituição individual no N8N
   // const [refreshingItem, setRefreshingItem] = useState<'top' | 'bottom' | 'shoes' | null>(null)
-  const [showInsufficientCoinsModal, setShowInsufficientCoinsModal] = useState(false)
-  const [showCoinStore, setShowCoinStore] = useState(false)
-  const { coins, deductCoins, hasEnoughCoins } = useCoins()
+  const [isSharing, setIsSharing] = useState(false)
+  const [shareUrl, setShareUrl] = useState<string | null>(null)
 
   useEffect(() => {
     generateLook()
@@ -62,13 +58,6 @@ export default function ResultadoPage() {
 
       if (userError || !user) {
         setError("Você precisa estar logado para gerar looks!")
-        return
-      }
-
-      // 💰 VALIDAR SALDO DE COINS ANTES DE GERAR LOOK
-      if (!hasEnoughCoins(1)) {
-        setLoading(false)
-        setShowInsufficientCoinsModal(true)
         return
       }
 
@@ -238,22 +227,6 @@ export default function ResultadoPage() {
         console.log("  👖 BOTTOM ID:", bottomId, "| Tipo:", typeof bottomId)
         console.log("  👟 SHOES ID:", shoesId, "| Tipo:", typeof shoesId)
 
-        // 💰 DEDUZIR 1 COIN APÓS SUCESSO DO N8N
-        const success = deductCoins(1)
-        if (success) {
-          console.log("💰 1 coin deduzido. Novo saldo:", coins - 1)
-          toast.info("💰 1 coin debitado", {
-            description: `Saldo restante: ${coins - 1} coins`,
-            duration: 3000,
-          })
-        } else {
-          console.error("❌ Falha ao deduzir coin")
-          toast.error("⚠️ Aviso", {
-            description: "Não foi possível debitar o coin, mas seu look foi gerado",
-            duration: 4000,
-          })
-        }
-
         // Buscar itens completos no Supabase (incluindo image_url)
         console.log("\n👕 [DEBUG] ========== BUSCANDO TOP NO SUPABASE ==========")
         console.log("👕 [DEBUG] Usando variável topId:", topId)
@@ -399,6 +372,48 @@ export default function ResultadoPage() {
     }
   }
 
+  const handleShare = async () => {
+    if (!look) return
+
+    try {
+      setIsSharing(true)
+
+      // Criar um texto descritivo do look
+      const shareText = `Confira meu look criado com Amiguei.AI! 👗✨\n\n` +
+        `👕 ${look.top.name}\n` +
+        `👖 ${look.bottom.name}\n` +
+        `👟 ${look.shoes.name}\n\n` +
+        `${look.reasoning}`
+
+      // Verificar se o navegador suporta Web Share API
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Meu Look - Amiguei.AI',
+          text: shareText,
+          url: window.location.href,
+        })
+        toast.success('Look compartilhado com sucesso! 🎉')
+      } else {
+        // Fallback: copiar para clipboard
+        await navigator.clipboard.writeText(shareText)
+        setShareUrl(window.location.href)
+        toast.success('Texto copiado para área de transferência! 📋')
+
+        // Resetar após 3 segundos
+        setTimeout(() => {
+          setShareUrl(null)
+        }, 3000)
+      }
+    } catch (err: any) {
+      console.error('Erro ao compartilhar:', err)
+      if (err.name !== 'AbortError') {
+        toast.error('Erro ao compartilhar. Tente novamente.')
+      }
+    } finally {
+      setIsSharing(false)
+    }
+  }
+
   // TODO: Implementar no N8N antes de reativar
   // Esta função requer modificação no workflow N8N para processar replace_only
   /*
@@ -505,58 +520,6 @@ export default function ResultadoPage() {
   }
   */
 
-  // Modal de coins insuficientes
-  if (showInsufficientCoinsModal) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
-          <div className="text-center mb-6">
-            <div className="flex justify-center mb-4">
-              <div className="relative">
-                <AmigueiCoin size="xlarge" />
-                <AlertCircle className="absolute -bottom-1 -right-1 w-8 h-8 text-red-500 bg-white rounded-full p-1" />
-              </div>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Ops! Você precisa de mais coins
-            </h2>
-            <p className="text-gray-600 mb-4">
-              Você tem <span className="font-bold text-pink-600">{coins} {coins === 1 ? 'coin' : 'coins'}</span> e precisa de <span className="font-bold">1 coin</span> para gerar um look.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <button
-              onClick={() => {
-                setShowInsufficientCoinsModal(false)
-                setShowCoinStore(true)
-              }}
-              className="w-full px-6 py-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-xl font-semibold hover:from-pink-600 hover:to-pink-700 transition-all shadow-md hover:shadow-lg"
-            >
-              Comprar Amiguei.Coins
-            </button>
-            <button
-              onClick={() => router.push("/")}
-              className="w-full px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all"
-            >
-              Voltar ao início
-            </button>
-          </div>
-        </div>
-
-        {/* Coin Store Modal */}
-        <CoinStore
-          open={showCoinStore}
-          onClose={() => {
-            setShowCoinStore(false)
-            // Depois de fechar a loja, redireciona para o início
-            router.push("/")
-          }}
-        />
-      </div>
-    )
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-purple-50">
@@ -602,6 +565,17 @@ export default function ResultadoPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 p-8">
       <div className="max-w-4xl mx-auto">
+        {/* Botão Voltar ao início - topo */}
+        <div className="mb-6">
+          <button
+            onClick={() => router.push('/')}
+            className="inline-flex items-center gap-2 text-gray-600 hover:text-pink-600 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Voltar ao início
+          </button>
+        </div>
+
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-2">Seu Look Perfeito!</h1>
           <p className="text-gray-600">Criado especialmente para você</p>
@@ -702,18 +676,33 @@ export default function ResultadoPage() {
           </div>
         </div>
 
-        <div className="flex gap-4 justify-center">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <button
             onClick={generateLook}
-            className="px-8 py-4 border-2 border-pink-500 text-pink-500 rounded-xl font-semibold"
+            disabled={loading}
+            className="flex-1 max-w-xs px-8 py-4 border-2 border-pink-500 text-pink-500 rounded-xl font-semibold hover:bg-pink-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Gerar outro look
+            {loading ? 'Gerando...' : 'Gerar outro look'}
           </button>
+
           <button
-            onClick={() => router.push("/")}
-            className="px-8 py-4 bg-pink-500 text-white rounded-xl font-semibold"
+            onClick={handleShare}
+            disabled={isSharing}
+            className="flex-1 max-w-xs px-8 py-4 bg-pink-500 text-white rounded-xl font-semibold hover:bg-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            Ir para o início
+            {isSharing ? (
+              'Compartilhando...'
+            ) : shareUrl ? (
+              <>
+                <Check className="w-5 h-5" />
+                Link copiado!
+              </>
+            ) : (
+              <>
+                <Share2 className="w-5 h-5" />
+                Compartilhar Look
+              </>
+            )}
           </button>
         </div>
       </div>

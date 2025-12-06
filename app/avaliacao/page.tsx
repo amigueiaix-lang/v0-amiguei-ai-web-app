@@ -2,14 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { ArrowLeft, Search, X, Star, Loader2, Shirt, AlertCircle } from "lucide-react"
+import { ArrowLeft, Search, X, Star, Loader2, Shirt } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { supabase } from "@/lib/supabase"
 import type { ClosetItem, SelectedPieces, EvaluationPayload, EvaluationResult } from "@/types/evaluation"
 import { CATEGORY_MAPPING } from "@/types/evaluation"
-import { useCoins } from "@/contexts/CoinsContext"
-import { CoinStore } from "@/components/CoinStore"
-import { AmigueiCoin } from "@/components/AmigueiCoin"
 import { toast } from "sonner"
 
 // Debounce hook
@@ -47,11 +44,6 @@ export default function AvaliacaoPage() {
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null)
   const [userRating, setUserRating] = useState(0)
   const [hoveredStar, setHoveredStar] = useState(0)
-  const [showInsufficientCoinsModal, setShowInsufficientCoinsModal] = useState(false)
-  const [showCoinStore, setShowCoinStore] = useState(false)
-
-  // Coins hook
-  const { coins, deductCoins, hasEnoughCoins } = useCoins()
 
   // Debounced search values
   const debouncedSearchTop = useDebounce(searchTop, 300)
@@ -170,29 +162,6 @@ export default function AvaliacaoPage() {
         return
       }
 
-      // 💰 VERIFICAR SALDO DE COINS ANTES DE AVALIAR LOOK
-      if (!hasEnoughCoins(1)) {
-        setSubmitting(false)
-        setShowInsufficientCoinsModal(true)
-        return
-      }
-
-      // 💰 DEDUZIR 1 COIN ANTES DE CHAMAR O N8N
-      const success = deductCoins(1)
-      if (!success) {
-        console.error("❌ Falha ao deduzir coin")
-        toast.error("❌ Erro ao processar pagamento", {
-          description: "Não foi possível debitar o coin. Tente novamente.",
-        })
-        return
-      }
-
-      console.log("💰 1 coin deduzido. Novo saldo:", coins - 1)
-      toast.info("💰 1 coin debitado", {
-        description: `Saldo restante: ${coins - 1} coins`,
-        duration: 3000,
-      })
-
       // Prepare payload
       const payload: EvaluationPayload = {
         user_id: user.id,
@@ -276,57 +245,6 @@ export default function AvaliacaoPage() {
     if (score >= 6) return "😐"
     if (score >= 4) return "😕"
     return "😞"
-  }
-
-  // Modal de coins insuficientes
-  if (showInsufficientCoinsModal) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
-          <div className="text-center mb-6">
-            <div className="flex justify-center mb-4">
-              <div className="relative">
-                <AmigueiCoin size="xlarge" />
-                <AlertCircle className="absolute -bottom-1 -right-1 w-8 h-8 text-red-500 bg-white rounded-full p-1" />
-              </div>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Ops! Você precisa de mais coins
-            </h2>
-            <p className="text-gray-600 mb-4">
-              Você tem <span className="font-bold text-pink-600">{coins} {coins === 1 ? 'coin' : 'coins'}</span> e precisa de <span className="font-bold">1 coin</span> para avaliar um look.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <button
-              onClick={() => {
-                setShowInsufficientCoinsModal(false)
-                setShowCoinStore(true)
-              }}
-              className="w-full px-6 py-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-xl font-semibold hover:from-pink-600 hover:to-pink-700 transition-all shadow-md hover:shadow-lg"
-            >
-              Comprar Amiguei.Coins
-            </button>
-            <button
-              onClick={() => setShowInsufficientCoinsModal(false)}
-              className="w-full px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all"
-            >
-              Voltar
-            </button>
-          </div>
-        </div>
-
-        {/* Coin Store Modal */}
-        <CoinStore
-          open={showCoinStore}
-          onClose={() => {
-            setShowCoinStore(false)
-            setShowInsufficientCoinsModal(false)
-          }}
-        />
-      </div>
-    )
   }
 
   // Loading state (fetching closet)

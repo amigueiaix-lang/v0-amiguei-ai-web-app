@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { supabase } from "@/lib/supabase"
+import { processImageForUpload, validateImageFile, formatFileSize } from "@/lib/imageUtils"
 
 interface ClothingItem {
   id: string
@@ -54,6 +55,8 @@ export default function ClosetPage() {
   })
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string>("")
+  const [processingImage, setProcessingImage] = useState(false)
+  const [processingMessage, setProcessingMessage] = useState("")
 
   // Carregar itens do Supabase (apenas do usuário logado)
   useEffect(() => {
@@ -89,15 +92,45 @@ export default function ClosetPage() {
     }
   }
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      setImageFile(file)
+    if (!file) return
+
+    // Validar arquivo
+    const validation = validateImageFile(file)
+    if (!validation.valid) {
+      alert(validation.error)
+      e.target.value = '' // Limpar input
+      return
+    }
+
+    setProcessingImage(true)
+    setProcessingMessage('Preparando imagem...')
+
+    try {
+      // Processar imagem (converter HEIC e comprimir se necessário)
+      const processedFile = await processImageForUpload(file, (message) => {
+        setProcessingMessage(message)
+      })
+
+      setImageFile(processedFile)
+
+      // Criar preview
       const reader = new FileReader()
       reader.onloadend = () => {
         setImagePreview(reader.result as string)
+        setProcessingMessage('')
       }
-      reader.readAsDataURL(file)
+      reader.readAsDataURL(processedFile)
+
+      // Mostrar info do arquivo processado
+      console.log(`✅ Imagem processada: ${processedFile.name} (${formatFileSize(processedFile.size)})`)
+    } catch (error: any) {
+      console.error('Erro ao processar imagem:', error)
+      alert(error.message || 'Erro ao processar imagem. Tente outra foto.')
+      e.target.value = '' // Limpar input
+    } finally {
+      setProcessingImage(false)
     }
   }
 
@@ -268,7 +301,12 @@ export default function ClosetPage() {
                         htmlFor="image"
                         className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors"
                       >
-                        {imagePreview ? (
+                        {processingImage ? (
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                            <span className="text-sm text-muted-foreground">{processingMessage}</span>
+                          </div>
+                        ) : imagePreview ? (
                           <img
                             src={imagePreview}
                             alt="Preview"
@@ -278,15 +316,17 @@ export default function ClosetPage() {
                           <div className="flex flex-col items-center justify-center gap-2">
                             <Upload className="w-8 h-8 text-muted-foreground" />
                             <span className="text-sm text-muted-foreground">Clique para fazer upload</span>
+                            <span className="text-xs text-muted-foreground">JPG, PNG, WebP ou fotos do iPhone</span>
                           </div>
                         )}
                       </label>
-                      <Input 
-                        id="image" 
-                        type="file" 
-                        accept="image/*" 
-                        className="hidden" 
-                        onChange={handleImageUpload} 
+                      <Input
+                        id="image"
+                        type="file"
+                        accept="image/*,.heic,.heif"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                        disabled={processingImage}
                       />
                     </div>
                   </div>

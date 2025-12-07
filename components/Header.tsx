@@ -39,8 +39,25 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-sm border-b border-gray-200">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-end h-16">
-          {/* Header content can be added here in the future */}
+        <div className="flex items-center justify-between h-16">
+          <Logo />
+
+          {!isLoading && isLoggedIn && (
+            <nav className="flex items-center gap-6">
+              <Link
+                href="/closet"
+                className="text-sm font-medium text-gray-700 hover:text-[#FF69B4] transition-colors"
+              >
+                Closet
+              </Link>
+              <Link
+                href="/amigos"
+                className="text-sm font-medium text-gray-700 hover:text-[#FF69B4] transition-colors"
+              >
+                Amigos
+              </Link>
+            </nav>
+          )}
         </div>
       </div>
     </header>

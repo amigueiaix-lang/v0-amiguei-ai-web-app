@@ -38,8 +38,9 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        // Login bem-sucedido, redireciona para closet
-        router.push("/closet")
+        // Login bem-sucedido, redireciona para onboarding
+        router.push("/onboarding/1")
+        router.refresh()
       }
     } catch (err: any) {
       const errorMessage = err.message || "Erro ao fazer login"

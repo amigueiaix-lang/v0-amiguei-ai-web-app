@@ -8,7 +8,6 @@ import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { UsernameInput } from "@/components/UsernameInput"
-import { ArrowLeft } from "lucide-react"
 
 export default function SignupPage() {
   const router = useRouter()
@@ -75,8 +74,8 @@ export default function SignupPage() {
         // Store user data locally
         localStorage.setItem("user", JSON.stringify({ name, email, username }))
 
-        // Redirect to welcome
-        router.push("/welcome")
+        // Redirect to onboarding
+        router.push("/onboarding/1")
       }
     } catch (err: any) {
       setError(err.message || "Erro ao criar conta")
@@ -88,14 +87,6 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen bg-white px-6 py-4">
       <div className="w-full max-w-[500px] mx-auto">
-        <button
-          onClick={() => window.history.back()}
-          className="flex items-center gap-2 text-black mb-4 hover:opacity-70"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span>Voltar</span>
-        </button>
-
         <Logo />
 
         <h2 className="text-2xl font-bold text-center mb-8">Crie sua conta</h2>

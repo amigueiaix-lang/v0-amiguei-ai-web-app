@@ -7,7 +7,6 @@ import { supabase } from "@/lib/supabase"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -30,8 +29,8 @@ export default function LoginPage() {
       if (signInError) throw signInError
 
       if (data.user) {
-        // Login bem-sucedido, redireciona para o closet
-        router.push("/closet")
+        // Login bem-sucedido, redireciona para onboarding (primeira vez) ou closet
+        router.push("/onboarding/1")
       }
     } catch (err: any) {
       setError(err.message || "Erro ao fazer login")
@@ -43,14 +42,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-white px-6 py-4">
       <div className="w-full max-w-[500px] mx-auto">
-        <button
-          onClick={() => window.history.back()}
-          className="flex items-center gap-2 text-black mb-4 hover:opacity-70"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span>Voltar</span>
-        </button>
-
         <Logo />
 
         <h2 className="text-2xl font-bold text-center mb-8">Bem-vinda de volta!</h2>

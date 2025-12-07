@@ -20,20 +20,31 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
 
+    if (!email || !password) {
+      setError("Email e senha são obrigatórios")
+      setLoading(false)
+      return
+    }
+
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
-      if (signInError) throw signInError
+      if (signInError) {
+        console.error("Login error:", signInError)
+        throw signInError
+      }
 
       if (data.user) {
-        // Login bem-sucedido, redireciona para onboarding (primeira vez) ou closet
-        router.push("/onboarding/1")
+        // Login bem-sucedido, redireciona para closet
+        router.push("/closet")
       }
     } catch (err: any) {
-      setError(err.message || "Erro ao fazer login")
+      const errorMessage = err.message || "Erro ao fazer login"
+      console.error("Login exception:", errorMessage)
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }

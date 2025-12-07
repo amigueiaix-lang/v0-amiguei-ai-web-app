@@ -23,6 +23,16 @@ export default function SignupPage() {
     e.preventDefault()
     setError("")
 
+    if (!name) {
+      setError("Nome é obrigatório")
+      return
+    }
+
+    if (!email) {
+      setError("Email é obrigatório")
+      return
+    }
+
     if (!username || username.length < 3) {
       setError("Username deve ter no mínimo 3 caracteres")
       return
@@ -65,7 +75,10 @@ export default function SignupPage() {
         },
       })
 
-      if (signUpError) throw signUpError
+      if (signUpError) {
+        console.error("Signup error:", signUpError)
+        throw signUpError
+      }
 
       if (data.user) {
         // Trigger automático do Supabase cria registro em public.users
@@ -78,7 +91,9 @@ export default function SignupPage() {
         router.push("/onboarding/1")
       }
     } catch (err: any) {
-      setError(err.message || "Erro ao criar conta")
+      const errorMessage = err.message || "Erro ao criar conta"
+      console.error("Signup exception:", errorMessage)
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }

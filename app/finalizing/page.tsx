@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabase"
 import { Logo } from "@/components/logo"
 import { Loader2 } from "lucide-react"
 
@@ -9,19 +10,43 @@ export default function FinalizingPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Simulate processing time
-    const timer = setTimeout(() => {
-      // Clear onboarding data from localStorage
-      localStorage.removeItem("onboarding_q1")
-      localStorage.removeItem("onboarding_q2")
-      localStorage.removeItem("onboarding_q3")
-      localStorage.removeItem("onboarding_q4")
+    const completeOnboarding = async () => {
+      try {
+        // Pegar o usuário autenticado
+        const { data: { user } } = await supabase.auth.getUser()
 
-      // Redirect to main page
-      router.push("/")
-    }, 3000)
+        if (user) {
+          // Marcar onboarding como completado no banco de dados
+          const { error } = await supabase
+            .from("users")
+            .update({ onboarding_completed: true })
+            .eq("id", user.id)
 
-    return () => clearTimeout(timer)
+          if (error) {
+            console.error("Error updating onboarding status:", error)
+          }
+        }
+
+        // Clear onboarding data from localStorage
+        localStorage.removeItem("onboarding_q1")
+        localStorage.removeItem("onboarding_q2")
+        localStorage.removeItem("onboarding_q3")
+        localStorage.removeItem("onboarding_q4")
+
+        // Wait a bit for the animation, then redirect
+        setTimeout(() => {
+          router.push("/closet")
+        }, 3000)
+      } catch (error) {
+        console.error("Error in onboarding completion:", error)
+        // Even if there's an error, redirect to avoid getting stuck
+        setTimeout(() => {
+          router.push("/closet")
+        }, 3000)
+      }
+    }
+
+    completeOnboarding()
   }, [router])
 
   return (

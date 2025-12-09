@@ -38,8 +38,24 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        // Login bem-sucedido, redireciona para onboarding
-        router.push("/onboarding/1")
+        // Verificar se o usuário já completou o onboarding
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("onboarding_completed")
+          .eq("id", data.user.id)
+          .single()
+
+        if (userError) {
+          console.error("Error fetching user data:", userError)
+          // Se der erro, assume que precisa fazer onboarding
+          router.push("/onboarding/1")
+        } else if (userData?.onboarding_completed) {
+          // Usuário já completou onboarding, vai direto para o closet
+          router.push("/closet")
+        } else {
+          // Usuário ainda não completou onboarding
+          router.push("/onboarding/1")
+        }
         router.refresh()
       }
     } catch (err: any) {
@@ -90,7 +106,7 @@ export default function LoginPage() {
           )}
 
           <div className="text-center">
-            <a href="#" className="text-sm text-[#FF69B4] hover:underline">
+            <a href="/forgot-password" className="text-sm text-[#FF69B4] hover:underline">
               Esqueceu a senha?
             </a>
           </div>

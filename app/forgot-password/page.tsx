@@ -2,7 +2,6 @@
 
 import type React from "react"
 import { useState } from "react"
-import { supabase } from "@/lib/supabase"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,13 +26,18 @@ export default function ForgotPasswordPage() {
     }
 
     try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const response = await fetch("/api/password-reset/request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
       })
 
-      if (resetError) {
-        console.error("Reset password error:", resetError)
-        throw resetError
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Erro ao enviar email de recuperação")
       }
 
       setSuccess(true)

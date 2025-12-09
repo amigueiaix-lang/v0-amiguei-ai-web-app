@@ -2,38 +2,39 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { supabase } from "@/lib/supabase"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 export default function ResetPasswordPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const token = searchParams.get("token")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isValidSession, setIsValidSession] = useState(false)
+  const [isValidToken, setIsValidToken] = useState(false)
+  const [isCheckingToken, setIsCheckingToken] = useState(true)
 
   useEffect(() => {
-    // Verificar se há uma sessão válida de recuperação
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setIsValidSession(true)
-      } else {
-        setError("Link inválido ou expirado. Por favor, solicite um novo link de recuperação.")
-      }
-    })
-  }, [])
+    if (!token) {
+      setError("Link inválido ou expirado. Por favor, solicite um novo link de recuperação.")
+      setIsCheckingToken(false)
+      return
+    }
+    setIsValidToken(true)
+    setIsCheckingToken(false)
+  }, [token])
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
 
-    if (password.length < 8) {
-      setError("A senha deve ter no mínimo 8 caracteres")
+    if (password.length < 6) {
+      setError("A senha deve ter no mínimo 6 caracteres")
       setLoading(false)
       return
     }
@@ -45,13 +46,18 @@ export default function ResetPasswordPage() {
     }
 
     try {
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: password,
+      const response = await fetch("/api/password-reset/validate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token, newPassword: password }),
       })
 
-      if (updateError) {
-        console.error("Update password error:", updateError)
-        throw updateError
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Erro ao atualizar senha")
       }
 
       // Senha atualizada com sucesso, redirecionar para login
@@ -66,7 +72,7 @@ export default function ResetPasswordPage() {
     }
   }
 
-  if (!isValidSession && !error) {
+  if (isCheckingToken) {
     return (
       <div className="min-h-screen bg-white px-6 py-4 flex items-center justify-center">
         <div className="text-center">
@@ -85,7 +91,7 @@ export default function ResetPasswordPage() {
         <h2 className="text-2xl font-bold text-center mb-2">Redefinir senha</h2>
         <p className="text-center text-gray-600 mb-8">Digite sua nova senha abaixo.</p>
 
-        {!isValidSession ? (
+        {!isValidToken ? (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-center">
             <p className="mb-4">{error}</p>
             <Button

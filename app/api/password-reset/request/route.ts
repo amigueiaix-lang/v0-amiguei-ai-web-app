@@ -3,26 +3,33 @@ import { NextRequest, NextResponse } from "next/server"
 import crypto from "crypto"
 import nodemailer from "nodemailer"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const gmailUser = process.env.GMAIL_USER!
-const gmailPassword = process.env.GMAIL_PASSWORD!
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: { autoRefreshToken: false, persistSession: false },
-})
-
-// Configurar transporte de email
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: gmailUser,
-    pass: gmailPassword,
-  },
-})
-
 export async function POST(request: NextRequest) {
   try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const gmailUser = process.env.GMAIL_USER
+    const gmailPassword = process.env.GMAIL_PASSWORD
+
+    if (!supabaseUrl || !supabaseServiceKey || !gmailUser || !gmailPassword) {
+      return NextResponse.json(
+        { error: "Variáveis de ambiente não configuradas" },
+        { status: 500 }
+      )
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
+
+    // Configurar transporte de email
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: gmailUser,
+        pass: gmailPassword,
+      },
+    })
+
     const { email } = await request.json()
 
     if (!email) {

@@ -54,22 +54,28 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
   // Lista de rotas públicas (não requerem autenticação)
-  const publicRoutes = ['/login', '/signup']
+  const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password']
   const isPublicRoute = publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))
+
+  // Tentar pegar o usuário, mas não falhar se não conseguir
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch (error) {
+    // Ignorar erros de autenticação em rotas públicas
+    console.error('Auth error in middleware:', error)
+  }
 
   // Se não está autenticado e não está em rota pública, redireciona para login
   if (!user && !isPublicRoute) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Se está autenticado e tenta acessar login/signup, redireciona para home
-  if (user && isPublicRoute) {
-    return NextResponse.redirect(new URL('/', request.url))
+  // Se está autenticado e tenta acessar login/signup, redireciona para closet
+  if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup')) {
+    return NextResponse.redirect(new URL('/closet', request.url))
   }
 
   return response

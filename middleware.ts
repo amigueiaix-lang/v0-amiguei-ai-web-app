@@ -64,7 +64,7 @@ export async function middleware(request: NextRequest) {
   )
 
   // Lista de rotas públicas (não requerem autenticação)
-  const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password']
+  const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password', '/api/']
   const isPublicRoute = publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
   // Tentar pegar o usuário, mas não falhar se não conseguir

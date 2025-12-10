@@ -36,14 +36,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email é obrigatório" }, { status: 400 })
     }
 
-    // Verificar se o usuário existe no Supabase
-    const { data: user, error: userError } = await supabase
-      .from("users")
-      .select("id, email")
-      .eq("email", email)
-      .single()
+    // Verificar se o usuário existe no Supabase usando Admin API
+    let user: any
+    try {
+      const { data: users, error: listError } = await supabase.auth.admin.listUsers()
+      if (listError) throw listError
 
-    if (userError || !user) {
+      user = users.users.find((u: any) => u.email === email)
+    } catch (error: any) {
+      console.error("Erro ao buscar usuário:", error)
+      // Não revelar se email existe ou não (segurança)
+      return NextResponse.json({
+        message: "Se o email existe em nossa base, um link de recuperação será enviado.",
+      })
+    }
+
+    if (!user) {
       // Não revelar se email existe ou não (segurança)
       return NextResponse.json({
         message: "Se o email existe em nossa base, um link de recuperação será enviado.",

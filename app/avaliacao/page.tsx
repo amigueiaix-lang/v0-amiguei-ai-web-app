@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Search, X, Star, Loader2, Shirt } from "lucide-react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Header } from "@/components/Header"
 import { supabase } from "@/lib/supabase"
 import type { ClosetItem, SelectedPieces, EvaluationPayload, EvaluationResult } from "@/types/evaluation"
@@ -26,10 +28,13 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export default function AvaliacaoPage() {
+  const router = useRouter()
+
   // State
   const [closetItems, setClosetItems] = useState<ClosetItem[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [selectedPieces, setSelectedPieces] = useState<SelectedPieces>({
     top: null,
     bottom: null,
@@ -213,7 +218,7 @@ export default function AvaliacaoPage() {
 
     } catch (err: any) {
       console.error("❌ Erro ao avaliar look:", err)
-      alert(err.message || 'Erro ao avaliar look. Tente novamente.')
+      setError(err.message || 'Erro ao avaliar look. Tente novamente.')
     } finally {
       setSubmitting(false)
     }
@@ -228,6 +233,7 @@ export default function AvaliacaoPage() {
     setSearchShoes("")
     setEvaluation(null)
     setUserRating(0)
+    setError(null)
   }
 
   // Get rating color
@@ -244,6 +250,76 @@ export default function AvaliacaoPage() {
     if (score >= 6) return "😐"
     if (score >= 4) return "😕"
     return "😞"
+  }
+
+  // Error state with friendly message for empty closet
+  if (error) {
+    const isEmptyClosetError = error.includes("resposta vazia") ||
+                               error.includes("não encontrados") ||
+                               error.includes("IDs das peças") ||
+                               error.includes("closet vazio") ||
+                               closetItems.length === 0
+
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-purple-50 px-4">
+        <div className="text-center max-w-md bg-white rounded-2xl shadow-xl p-8">
+          {isEmptyClosetError ? (
+            <>
+              <div className="w-20 h-20 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-pink-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold mb-3 text-gray-900">Seu closet está vazio!</h2>
+              <p className="text-gray-600 mb-6 leading-relaxed">
+                Para avaliar looks, precisamos que você adicione algumas peças ao seu closet virtual primeiro.
+                É rápido e fácil!
+              </p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => router.push("/closet")}
+                  className="w-full px-6 py-4 bg-gradient-to-r from-[#FF69B4] to-[#E91E63] text-white rounded-xl font-semibold hover:brightness-110 transition-all shadow-md"
+                >
+                  Ir para o Closet
+                </button>
+                <button
+                  onClick={() => router.push("/")}
+                  className="w-full px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-all"
+                >
+                  Voltar ao início
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold mb-3 text-gray-900">Ops! Algo deu errado</h2>
+              <p className="text-gray-600 mb-6 leading-relaxed">
+                {error}
+              </p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => setError(null)}
+                  className="w-full px-6 py-4 bg-gradient-to-r from-[#FF69B4] to-[#E91E63] text-white rounded-xl font-semibold hover:brightness-110 transition-all shadow-md"
+                >
+                  Tentar novamente
+                </button>
+                <button
+                  onClick={() => router.push("/")}
+                  className="w-full px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-all"
+                >
+                  Voltar ao início
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    )
   }
 
   // Loading state (fetching closet)

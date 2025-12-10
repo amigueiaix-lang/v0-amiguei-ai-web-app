@@ -64,7 +64,7 @@ export async function middleware(request: NextRequest) {
   )
 
   // Lista de rotas públicas (não requerem autenticação)
-  const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password', '/api/']
+  const publicRoutes = ['/login', '/signup', '/welcome', '/forgot-password', '/reset-password', '/api/']
   const isPublicRoute = publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
   // Tentar pegar o usuário, mas não falhar se não conseguir
@@ -82,8 +82,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Se está autenticado e tenta acessar login/signup, redireciona para closet
-  if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup')) {
+  // Se está autenticado e tenta acessar login/signup/welcome, redireciona para closet
+  if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup' || request.nextUrl.pathname === '/welcome')) {
     return NextResponse.redirect(new URL('/closet', request.url))
   }
 

@@ -1,61 +1,100 @@
 "use client"
 
+import type React from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
-import { Sparkles } from "lucide-react"
 
 export default function WelcomePage() {
   const router = useRouter()
+  const [userName, setUserName] = useState("")
 
-  const handleStart = () => {
+  useEffect(() => {
+    const userData = localStorage.getItem("user")
+    if (userData) {
+      const user = JSON.parse(userData)
+      setUserName(user.name)
+    }
+  }, [])
+
+  const handleStartOnboarding = () => {
     router.push("/onboarding/1")
   }
 
+  const handleSkip = () => {
+    router.push("/closet")
+  }
+
   return (
-    <div className="min-h-screen bg-white px-6 py-4">
-      <div className="w-full max-w-[500px] mx-auto">
+    <div className="min-h-screen bg-white px-6 py-4 flex flex-col">
+      <div className="w-full max-w-[600px] mx-auto flex flex-col items-center justify-center min-h-screen">
         <Logo />
 
-        <div className="mt-12 text-center space-y-6">
-          <div className="flex justify-center">
-            <Sparkles className="w-16 h-16 text-[#FF69B4]" />
-          </div>
-
-          <h2 className="text-3xl font-bold">Bem-vinda ao Amiguei.AI! 🎉</h2>
-
-          <p className="text-base text-gray-600 leading-relaxed">
-            Estamos muito felizes em ter você aqui! Vamos começar conhecendo um pouco mais sobre você para
-            personalizar sua experiência.
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold mb-4">
+            Parabéns, {userName || "Bem-vinda"}! 🎉
+          </h1>
+          <p className="text-xl text-gray-700 mb-6">
+            Sua conta foi criada com sucesso!
           </p>
+        </div>
 
-          <div className="mt-8 p-6 border-2 border-[#FF69B4] rounded-xl bg-gradient-to-br from-pink-50 to-purple-50">
-            <h3 className="font-semibold text-lg mb-3 text-[#FF69B4]">O que vem a seguir:</h3>
-            <ul className="text-left text-sm text-gray-700 space-y-2">
-              <li className="flex items-start gap-2">
-                <span className="text-[#FF69B4] font-bold">1.</span>
-                <span>Conte-nos sobre seu estilo e preferências</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-[#FF69B4] font-bold">2.</span>
-                <span>Responda algumas perguntas rápidas</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-[#FF69B4] font-bold">3.</span>
-                <span>Comece a descobrir looks perfeitos!</span>
-              </li>
-            </ul>
-          </div>
+        <div className="bg-gradient-to-br from-[#FF69B4]/10 to-[#E91E63]/10 border border-[#FF69B4]/20 rounded-2xl p-8 mb-8 max-w-md">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold mb-4 text-gray-900">
+              Aproveite melhor o Amiguei.AI
+            </h2>
+            <p className="text-gray-700 mb-6">
+              Agora é uma ótima hora para completar seu perfil! Quanto mais informações você compartilhar, melhores serão as indicações de amigas para você.
+            </p>
 
-          <div className="pt-4">
-            <Button
-              onClick={handleStart}
-              className="w-full bg-gradient-to-r from-[#FF69B4] to-[#E91E63] hover:brightness-110 text-white rounded-xl py-6 text-base font-semibold"
-            >
-              Vamos começar! ✨
-            </Button>
+            <div className="space-y-3 text-left bg-white/50 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">👤</span>
+                <div>
+                  <p className="font-semibold text-gray-900">Complete seu perfil</p>
+                  <p className="text-sm text-gray-600">Adicione foto, bio e preferências</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">💭</span>
+                <div>
+                  <p className="font-semibold text-gray-900">Melhores indicações</p>
+                  <p className="text-sm text-gray-600">Algoritmo mais preciso para te conectar</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">🌟</span>
+                <div>
+                  <p className="font-semibold text-gray-900">Destaque seu potencial</p>
+                  <p className="text-sm text-gray-600">Mostre o melhor de você para outras usuárias</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+
+        <div className="w-full max-w-md space-y-3">
+          <Button
+            onClick={handleStartOnboarding}
+            className="w-full bg-gradient-to-r from-[#FF69B4] to-[#E91E63] hover:brightness-110 text-white rounded-xl py-6 text-base font-semibold"
+          >
+            Começar a completar meu perfil
+          </Button>
+
+          <Button
+            onClick={handleSkip}
+            variant="outline"
+            className="w-full border-2 border-[#FF69B4] text-[#FF69B4] hover:bg-[#FF69B4]/5 rounded-xl py-6 text-base font-semibold"
+          >
+            Pular por enquanto
+          </Button>
+        </div>
+
+        <p className="text-center text-sm text-gray-500 mt-6">
+          Você pode completar seu perfil a qualquer momento nas configurações
+        </p>
       </div>
     </div>
   )

@@ -533,16 +533,64 @@ export default function ResultadoPage() {
   }
 
   if (error) {
+    // Verificar se o erro é relacionado a closet vazio
+    const isEmptyClosetError = error.includes("resposta vazia") || error.includes("não encontrados") || error.includes("IDs das peças")
+
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <p className="text-red-500 mb-4">{error}</p>
-          <button
-            onClick={() => router.push("/quiz")}
-            className="px-6 py-3 bg-pink-500 text-white rounded-lg"
-          >
-            Tentar novamente
-          </button>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-purple-50 px-4">
+        <div className="text-center max-w-md bg-white rounded-2xl shadow-xl p-8">
+          {isEmptyClosetError ? (
+            <>
+              <div className="w-20 h-20 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-pink-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold mb-3 text-gray-900">Seu closet está vazio!</h2>
+              <p className="text-gray-600 mb-6 leading-relaxed">
+                Para criar looks personalizados, precisamos que você adicione algumas peças ao seu closet virtual primeiro.
+                É rápido e fácil!
+              </p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => router.push("/closet")}
+                  className="w-full px-6 py-4 bg-gradient-to-r from-[#FF69B4] to-[#E91E63] text-white rounded-xl font-semibold hover:brightness-110 transition-all shadow-md"
+                >
+                  Ir para o Closet
+                </button>
+                <button
+                  onClick={() => router.push("/")}
+                  className="w-full px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-all"
+                >
+                  Voltar ao início
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold mb-3 text-gray-900">Ops! Algo deu errado</h2>
+              <p className="text-gray-600 mb-6 leading-relaxed">{error}</p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => router.push("/quiz")}
+                  className="w-full px-6 py-4 bg-gradient-to-r from-[#FF69B4] to-[#E91E63] text-white rounded-xl font-semibold hover:brightness-110 transition-all shadow-md"
+                >
+                  Tentar novamente
+                </button>
+                <button
+                  onClick={() => router.push("/")}
+                  className="w-full px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-all"
+                >
+                  Voltar ao início
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     )

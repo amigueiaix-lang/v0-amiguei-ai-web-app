@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft, Plus, Trash2, Upload } from "lucide-react"
 import { Logo } from "@/components/logo"
+import { ProfileAvatar } from "@/components/ProfileAvatar"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -245,7 +246,7 @@ export default function ClosetPage() {
             <span className="font-medium">Voltar</span>
           </Link>
           <Logo />
-          <div className="w-20" />
+          <ProfileAvatar />
         </div>
       </header>
 

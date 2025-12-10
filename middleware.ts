@@ -82,8 +82,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Se está autenticado e tenta acessar login/signup/welcome, redireciona para closet
-  if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup' || request.nextUrl.pathname === '/welcome')) {
+  // Se está autenticado e tenta acessar login/signup, redireciona para closet
+  // Nota: /welcome e /onboarding são permitidos para usuários autenticados (fluxo pós-cadastro)
+  if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup')) {
     return NextResponse.redirect(new URL('/closet', request.url))
   }
 

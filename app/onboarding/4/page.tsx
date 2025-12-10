@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { supabase } from "@/lib/supabase"
 
 const options = [
   "Sofisticada",
@@ -32,24 +33,55 @@ export default function OnboardingQuestion4() {
     }
   }
 
-  const handleFinish = () => {
+  const [saving, setSaving] = useState(false)
+
+  const handleFinish = async () => {
     if (selected.length > 0 || other) {
+      setSaving(true)
       const finalSelection = other ? [...selected, other] : selected
       localStorage.setItem("onboarding_q4", JSON.stringify(finalSelection))
 
       // Compile all onboarding data
       const onboardingData = {
-        user: JSON.parse(localStorage.getItem("user") || "{}"),
-        onboarding: {
-          cor_raca: localStorage.getItem("onboarding_q1"),
-          cabelo_cor: localStorage.getItem("onboarding_q2"),
-          estilo_corpo: localStorage.getItem("onboarding_q3"),
-          imagem_dia_a_dia: finalSelection,
-        },
+        cor_raca: localStorage.getItem("onboarding_q1"),
+        cabelo_cor: localStorage.getItem("onboarding_q2"),
+        estilo_corpo: localStorage.getItem("onboarding_q3"),
+        imagem_dia_a_dia: finalSelection,
       }
 
-      console.log("Dados para salvar:", onboardingData)
+      try {
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser()
 
+        if (user) {
+          // Save onboarding data to users table
+          const { error } = await supabase
+            .from('users')
+            .update({
+              cor_raca: onboardingData.cor_raca,
+              cabelo_cor: onboardingData.cabelo_cor,
+              estilo_corpo: onboardingData.estilo_corpo,
+              imagem_dia_a_dia: onboardingData.imagem_dia_a_dia,
+              onboarding_completed: true,
+            })
+            .eq('id', user.id)
+
+          if (error) {
+            console.error('Erro ao salvar onboarding:', error)
+          } else {
+            console.log('Onboarding salvo com sucesso!')
+            // Clear localStorage onboarding data
+            localStorage.removeItem("onboarding_q1")
+            localStorage.removeItem("onboarding_q2")
+            localStorage.removeItem("onboarding_q3")
+            localStorage.removeItem("onboarding_q4")
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao salvar onboarding:', error)
+      }
+
+      setSaving(false)
       router.push("/finalizing")
     }
   }
@@ -147,10 +179,10 @@ export default function OnboardingQuestion4() {
           </Button>
           <Button
             onClick={handleFinish}
-            disabled={selected.length === 0 && !other}
+            disabled={(selected.length === 0 && !other) || saving}
             className="bg-gradient-to-r from-[#FF69B4] to-[#E91E63] hover:brightness-110 text-white rounded-xl px-8 py-3 text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
           >
-            Finalizar →
+            {saving ? "Salvando..." : "Finalizar →"}
           </Button>
         </div>
       </div>

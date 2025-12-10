@@ -87,8 +87,8 @@ export default function SignupPage() {
         // Store user data locally
         localStorage.setItem("user", JSON.stringify({ name, email, username }))
 
-        // Redirect to welcome page
-        router.push("/welcome")
+        // Redirect to profile setup page
+        router.push("/profile-setup")
       }
     } catch (err: any) {
       const errorMessage = err.message || "Erro ao criar conta"

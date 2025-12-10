@@ -43,32 +43,32 @@ export default function WelcomePage() {
         <div className="bg-gradient-to-br from-[#FF69B4]/10 to-[#E91E63]/10 border border-[#FF69B4]/20 rounded-2xl p-8 mb-8 max-w-md">
           <div className="text-center">
             <h2 className="text-2xl font-bold mb-4 text-gray-900">
-              Aproveite melhor o Amiguei.AI
+              Personalize suas recomendações! 👗
             </h2>
             <p className="text-gray-700 mb-6">
-              Agora é uma ótima hora para completar seu perfil! Quanto mais informações você compartilhar, melhores serão as indicações de amigas para você.
+              Responda um quiz rápido para personalizarmos as recomendações de looks, ocasiões e entendermos melhor o seu estilo.
             </p>
 
             <div className="space-y-3 text-left bg-white/50 rounded-lg p-4">
               <div className="flex items-start gap-3">
-                <span className="text-2xl">👤</span>
+                <span className="text-2xl">✨</span>
                 <div>
-                  <p className="font-semibold text-gray-900">Complete seu perfil</p>
-                  <p className="text-sm text-gray-600">Adicione foto, bio e preferências</p>
+                  <p className="font-semibold text-gray-900">Looks personalizados</p>
+                  <p className="text-sm text-gray-600">Recomendações de acordo com seu estilo</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <span className="text-2xl">💭</span>
+                <span className="text-2xl">🎨</span>
                 <div>
-                  <p className="font-semibold text-gray-900">Melhores indicações</p>
-                  <p className="text-sm text-gray-600">Algoritmo mais preciso para te conectar</p>
+                  <p className="font-semibold text-gray-900">Entenda seu estilo</p>
+                  <p className="text-sm text-gray-600">Descubra cores e peças ideais para você</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <span className="text-2xl">🌟</span>
+                <span className="text-2xl">💡</span>
                 <div>
-                  <p className="font-semibold text-gray-900">Destaque seu potencial</p>
-                  <p className="text-sm text-gray-600">Mostre o melhor de você para outras usuárias</p>
+                  <p className="font-semibold text-gray-900">Sugestões inteligentes</p>
+                  <p className="text-sm text-gray-600">Ocasiões e combinações perfeitas</p>
                 </div>
               </div>
             </div>
@@ -80,7 +80,7 @@ export default function WelcomePage() {
             onClick={handleStartOnboarding}
             className="w-full bg-gradient-to-r from-[#FF69B4] to-[#E91E63] hover:brightness-110 text-white rounded-xl py-6 text-base font-semibold"
           >
-            Começar a completar meu perfil
+            Responder quiz rápido
           </Button>
 
           <Button
@@ -93,7 +93,7 @@ export default function WelcomePage() {
         </div>
 
         <p className="text-center text-sm text-gray-500 mt-6">
-          Você pode completar seu perfil a qualquer momento nas configurações
+          Leva menos de 2 minutos e você pode responder quando quiser!
         </p>
       </div>
     </div>

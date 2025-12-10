@@ -1,10 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, ArrowRight } from "lucide-react"
-import { Logo } from "@/components/logo"
+import { Header } from "@/components/Header"
 
 interface Question {
   id: number
@@ -83,21 +82,10 @@ export default function QuizPage() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 h-[60px] flex items-center px-6">
-        <div className="w-full flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-black hover:text-[#FF69B4] transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Voltar</span>
-          </Link>
-          <div className="max-w-[150px]">
-            <Logo />
-          </div>
-          <div className="w-20" />
-        </div>
-      </header>
+      <Header showBackButton backButtonHref="/" backButtonText="Voltar" />
 
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center px-4 pt-8 pb-8">
+      <main className="flex-1 flex items-center justify-center px-4 pt-20 pb-8">
         <div className="w-full max-w-2xl">
           {/* Progress Bar */}
           <div className="mb-8">

@@ -1,10 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Link from "next/link"
-import { ArrowLeft, Plus, Trash2, Upload } from "lucide-react"
-import { Logo } from "@/components/logo"
-import { ProfileAvatar } from "@/components/ProfileAvatar"
+import { Plus, Trash2, Upload } from "lucide-react"
+import { Header } from "@/components/Header"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -239,16 +237,7 @@ export default function ClosetPage() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-foreground hover:text-primary transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Voltar</span>
-          </Link>
-          <Logo />
-          <ProfileAvatar />
-        </div>
-      </header>
+      <Header showBackButton backButtonHref="/" backButtonText="Voltar" />
 
       {/* Main Content */}
       <main className="flex-1 px-4 pt-24 pb-8">

@@ -1,46 +1,45 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import Link from "next/link"
-import { supabase } from "@/lib/supabase"
-import { Logo } from "./logo"
+import { ArrowLeft } from "lucide-react"
+import { Logo } from "@/components/logo"
+import { ProfileAvatar } from "@/components/ProfileAvatar"
 
-/**
- * Global Header Component
- */
-export function Header() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+interface HeaderProps {
+  showBackButton?: boolean
+  backButtonHref?: string
+  backButtonText?: string
+}
 
-  useEffect(() => {
-    // Check initial auth state
-    const checkAuth = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      setIsLoggedIn(!!user)
-      setIsLoading(false)
-    }
-
-    checkAuth()
-
-    // Subscribe to auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsLoggedIn(!!session?.user)
-    })
-
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [])
-
+export function Header({
+  showBackButton = false,
+  backButtonHref = "/",
+  backButtonText = "Voltar"
+}: HeaderProps) {
   return (
-    <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-sm border-b border-gray-200">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Header vazio - sem logo e sem links */}
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200">
+      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        {/* Left side - Back button or empty space */}
+        <div className="w-24">
+          {showBackButton && (
+            <Link
+              href={backButtonHref}
+              className="flex items-center gap-2 text-gray-700 hover:text-[#FF69B4] transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span className="font-medium hidden sm:inline">{backButtonText}</span>
+            </Link>
+          )}
+        </div>
+
+        {/* Center - Logo */}
+        <div className="flex-1 flex justify-center">
+          <Logo />
+        </div>
+
+        {/* Right side - Profile Avatar */}
+        <div className="w-24 flex justify-end">
+          <ProfileAvatar />
         </div>
       </div>
     </header>

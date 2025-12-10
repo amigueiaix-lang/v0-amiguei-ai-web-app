@@ -1,9 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import Link from "next/link"
-import { ArrowLeft, Search, X, Star, Loader2, Shirt } from "lucide-react"
-import { Logo } from "@/components/logo"
+import { Search, X, Star, Loader2, Shirt } from "lucide-react"
+import { Header } from "@/components/Header"
 import { supabase } from "@/lib/supabase"
 import type { ClosetItem, SelectedPieces, EvaluationPayload, EvaluationResult } from "@/types/evaluation"
 import { CATEGORY_MAPPING } from "@/types/evaluation"
@@ -303,20 +302,9 @@ export default function AvaliacaoPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      <header className="bg-white border-b border-gray-200 h-[60px] flex items-center px-6">
-        <div className="w-full flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-black hover:text-pink-500 transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Voltar</span>
-          </Link>
-          <div className="max-w-[150px]">
-            <Logo />
-          </div>
-          <div className="w-20" />
-        </div>
-      </header>
+      <Header showBackButton backButtonHref="/" backButtonText="Voltar" />
 
-      <main className="flex-1 px-4 pt-8 pb-8">
+      <main className="flex-1 px-4 pt-20 pb-8">
         <div className="container mx-auto max-w-3xl">
           {!evaluation ? (
             <>

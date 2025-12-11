@@ -15,12 +15,17 @@ export async function POST(request: Request) {
 
     // Parse request body
     const body = await request.json()
-    const { top_item_id, bottom_item_id, shoes_item_id, reasoning, occasion, style, climate } = body
+    const { top_item_id, bottom_item_id, dress_item_id, shoes_item_id, reasoning, occasion, style, climate } = body
 
     // Validate required fields
-    if (!top_item_id || !bottom_item_id || !shoes_item_id || !reasoning) {
+    const isDressLook = !!dress_item_id
+    const hasRequiredItems = isDressLook
+      ? (dress_item_id && shoes_item_id)
+      : (top_item_id && bottom_item_id && shoes_item_id)
+
+    if (!hasRequiredItems || !reasoning) {
       return NextResponse.json(
-        { error: 'Campos obrigatórios faltando: top_item_id, bottom_item_id, shoes_item_id, reasoning' },
+        { error: 'Campos obrigatórios faltando: Para look com vestido (dress_item_id, shoes_item_id) ou look tradicional (top_item_id, bottom_item_id, shoes_item_id), e reasoning' },
         { status: 400 }
       )
     }
@@ -58,20 +63,31 @@ export async function POST(request: Request) {
     }
 
     // Insert shared look into database
+    const sharedLookData: any = {
+      user_id: user.id,
+      share_code: shareCode!,
+      shoes_item_id,
+      reasoning,
+      occasion: occasion || null,
+      style: style || null,
+      climate: climate || null,
+      view_count: 0,
+    }
+
+    // Add dress or top+bottom based on look type
+    if (isDressLook) {
+      sharedLookData.dress_item_id = dress_item_id
+      sharedLookData.top_item_id = null
+      sharedLookData.bottom_item_id = null
+    } else {
+      sharedLookData.top_item_id = top_item_id
+      sharedLookData.bottom_item_id = bottom_item_id
+      sharedLookData.dress_item_id = null
+    }
+
     const { data: sharedLook, error: insertError } = await supabase
       .from('shared_looks')
-      .insert({
-        user_id: user.id,
-        share_code: shareCode!,
-        top_item_id,
-        bottom_item_id,
-        shoes_item_id,
-        reasoning,
-        occasion: occasion || null,
-        style: style || null,
-        climate: climate || null,
-        view_count: 0,
-      })
+      .insert(sharedLookData)
       .select()
       .single()
 
@@ -114,6 +130,7 @@ export async function GET(request: Request) {
         *,
         top_item:closet_items!shared_looks_top_item_id_fkey(id, name, image_url, category, color),
         bottom_item:closet_items!shared_looks_bottom_item_id_fkey(id, name, image_url, category, color),
+        dress_item:closet_items!shared_looks_dress_item_id_fkey(id, name, image_url, category, color),
         shoes_item:closet_items!shared_looks_shoes_item_id_fkey(id, name, image_url, category, color),
         user:users!shared_looks_user_id_fkey(id, name, username)
       `)

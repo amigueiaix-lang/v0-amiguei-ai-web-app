@@ -17,8 +17,9 @@ interface ClotItem {
 interface SharedLook {
   id: string
   share_code: string
-  top_item: ClotItem
-  bottom_item: ClotItem
+  top_item?: ClotItem | null
+  bottom_item?: ClotItem | null
+  dress_item?: ClotItem | null
   shoes_item: ClotItem
   reasoning: string
   occasion: string | null
@@ -174,62 +175,108 @@ export default function SharedLookPage() {
           {/* Look Items */}
           <div className="max-w-[400px] mx-auto mb-8">
             <div className="flex flex-col items-center">
-              {/* TOP */}
-              <div className="text-center w-full relative z-30">
-                <div className="max-w-[300px] mx-auto h-[280px] bg-white rounded-xl overflow-hidden relative shadow-md">
-                  {sharedLook.top_item.image_url && (
-                    <Image
-                      src={sharedLook.top_item.image_url}
-                      alt={sharedLook.top_item.name}
-                      fill
-                      className="object-contain"
-                      unoptimized
-                    />
-                  )}
-                </div>
-                <div className="mt-3 mb-2">
-                  <p className="font-medium text-sm text-gray-500 uppercase mb-1">Top</p>
-                  <p className="font-bold">{sharedLook.top_item.name}</p>
-                </div>
-              </div>
+              {sharedLook.dress_item ? (
+                // LOOK COM VESTIDO: mostrar apenas vestido + sapatos
+                <>
+                  {/* VESTIDO */}
+                  <div className="text-center w-full relative z-30">
+                    <div className="max-w-[300px] mx-auto h-[450px] bg-white rounded-xl overflow-hidden relative shadow-md">
+                      {sharedLook.dress_item.image_url && (
+                        <Image
+                          src={sharedLook.dress_item.image_url}
+                          alt={sharedLook.dress_item.name}
+                          fill
+                          className="object-contain"
+                          unoptimized
+                        />
+                      )}
+                    </div>
+                    <div className="mt-3 mb-2">
+                      <p className="font-medium text-sm text-gray-500 uppercase mb-1">Vestido</p>
+                      <p className="font-bold">{sharedLook.dress_item.name}</p>
+                    </div>
+                  </div>
 
-              {/* BOTTOM */}
-              <div className="text-center w-full relative z-20 -mt-8">
-                <div className="max-w-[300px] mx-auto h-[320px] bg-white rounded-xl overflow-hidden relative shadow-md">
-                  {sharedLook.bottom_item.image_url && (
-                    <Image
-                      src={sharedLook.bottom_item.image_url}
-                      alt={sharedLook.bottom_item.name}
-                      fill
-                      className="object-contain"
-                      unoptimized
-                    />
-                  )}
-                </div>
-                <div className="mt-3 mb-2">
-                  <p className="font-medium text-sm text-gray-500 uppercase mb-1">Bottom</p>
-                  <p className="font-bold">{sharedLook.bottom_item.name}</p>
-                </div>
-              </div>
+                  {/* SAPATOS - sobrepõe o vestido */}
+                  <div className="text-center w-full relative z-20 -mt-8">
+                    <div className="max-w-[300px] mx-auto h-[200px] bg-white rounded-xl overflow-hidden relative shadow-md">
+                      {sharedLook.shoes_item.image_url && (
+                        <Image
+                          src={sharedLook.shoes_item.image_url}
+                          alt={sharedLook.shoes_item.name}
+                          fill
+                          className="object-contain"
+                          unoptimized
+                        />
+                      )}
+                    </div>
+                    <div className="mt-3">
+                      <p className="font-medium text-sm text-gray-500 uppercase mb-1">Shoes</p>
+                      <p className="font-bold">{sharedLook.shoes_item.name}</p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                // LOOK TRADICIONAL: mostrar top + bottom + shoes
+                <>
+                  {/* TOP */}
+                  <div className="text-center w-full relative z-30">
+                    <div className="max-w-[300px] mx-auto h-[280px] bg-white rounded-xl overflow-hidden relative shadow-md">
+                      {sharedLook.top_item?.image_url && (
+                        <Image
+                          src={sharedLook.top_item.image_url}
+                          alt={sharedLook.top_item.name}
+                          fill
+                          className="object-contain"
+                          unoptimized
+                        />
+                      )}
+                    </div>
+                    <div className="mt-3 mb-2">
+                      <p className="font-medium text-sm text-gray-500 uppercase mb-1">Top</p>
+                      <p className="font-bold">{sharedLook.top_item?.name}</p>
+                    </div>
+                  </div>
 
-              {/* SHOES */}
-              <div className="text-center w-full relative z-10 -mt-8">
-                <div className="max-w-[300px] mx-auto h-[200px] bg-white rounded-xl overflow-hidden relative shadow-md">
-                  {sharedLook.shoes_item.image_url && (
-                    <Image
-                      src={sharedLook.shoes_item.image_url}
-                      alt={sharedLook.shoes_item.name}
-                      fill
-                      className="object-contain"
-                      unoptimized
-                    />
-                  )}
-                </div>
-                <div className="mt-3">
-                  <p className="font-medium text-sm text-gray-500 uppercase mb-1">Shoes</p>
-                  <p className="font-bold">{sharedLook.shoes_item.name}</p>
-                </div>
-              </div>
+                  {/* BOTTOM */}
+                  <div className="text-center w-full relative z-20 -mt-8">
+                    <div className="max-w-[300px] mx-auto h-[320px] bg-white rounded-xl overflow-hidden relative shadow-md">
+                      {sharedLook.bottom_item?.image_url && (
+                        <Image
+                          src={sharedLook.bottom_item.image_url}
+                          alt={sharedLook.bottom_item.name}
+                          fill
+                          className="object-contain"
+                          unoptimized
+                        />
+                      )}
+                    </div>
+                    <div className="mt-3 mb-2">
+                      <p className="font-medium text-sm text-gray-500 uppercase mb-1">Bottom</p>
+                      <p className="font-bold">{sharedLook.bottom_item?.name}</p>
+                    </div>
+                  </div>
+
+                  {/* SHOES */}
+                  <div className="text-center w-full relative z-10 -mt-8">
+                    <div className="max-w-[300px] mx-auto h-[200px] bg-white rounded-xl overflow-hidden relative shadow-md">
+                      {sharedLook.shoes_item.image_url && (
+                        <Image
+                          src={sharedLook.shoes_item.image_url}
+                          alt={sharedLook.shoes_item.name}
+                          fill
+                          className="object-contain"
+                          unoptimized
+                        />
+                      )}
+                    </div>
+                    <div className="mt-3">
+                      <p className="font-medium text-sm text-gray-500 uppercase mb-1">Shoes</p>
+                      <p className="font-bold">{sharedLook.shoes_item.name}</p>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 

@@ -12,10 +12,12 @@ import { toast } from "sonner"
 interface LookResponse {
   success: boolean
   message: string
-  top_item_id: string
-  top_item_name: string
-  bottom_item_id: string
-  bottom_item_name: string
+  top_item_id?: string
+  top_item_name?: string
+  bottom_item_id?: string
+  bottom_item_name?: string
+  dress_item_id?: string
+  dress_item_name?: string
   shoes_item_id: string
   shoes_item_name: string
   reasoning: string
@@ -23,8 +25,9 @@ interface LookResponse {
 
 // Interface para o look processado (depois de buscar no Supabase)
 interface ProcessedLook {
-  top: { id: string; name: string; image_url: string }
-  bottom: { id: string; name: string; image_url: string }
+  top?: { id: string; name: string; image_url: string }
+  bottom?: { id: string; name: string; image_url: string }
+  dress?: { id: string; name: string; image_url: string }
   shoes: { id: string; name: string; image_url: string }
   reasoning: string
 }
@@ -37,8 +40,9 @@ export default function ResultadoPage() {
   const [lookImages, setLookImages] = useState<{
     top: string | null
     bottom: string | null
+    dress: string | null
     shoes: string | null
-  }>({ top: null, bottom: null, shoes: null })
+  }>({ top: null, bottom: null, dress: null, shoes: null })
   // TODO: Reativar quando implementar substituição individual no N8N
   // const [refreshingItem, setRefreshingItem] = useState<'top' | 'bottom' | 'shoes' | null>(null)
   const [isSharing, setIsSharing] = useState(false)
@@ -81,19 +85,27 @@ export default function ResultadoPage() {
       // Se houver feedback e um look atual, salvar o feedback antes de gerar novo look
       if (feedback && look) {
         try {
+          const feedbackPayload: any = {
+            user_id: user.id,
+            feedback_type: feedback,
+            occasion: quizResponses.occasion,
+            climate: quizResponses.climate,
+            style: quizResponses.style,
+          }
+
+          // Add item IDs based on look type
+          if (look.dress) {
+            feedbackPayload.dress_item_id = look.dress.id
+          } else {
+            feedbackPayload.top_item_id = look.top?.id
+            feedbackPayload.bottom_item_id = look.bottom?.id
+          }
+          feedbackPayload.shoes_item_id = look.shoes.id
+
           await fetch('/api/look-feedback', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              user_id: user.id,
-              top_item_id: look.top.id,
-              bottom_item_id: look.bottom.id,
-              shoes_item_id: look.shoes.id,
-              feedback_type: feedback,
-              occasion: quizResponses.occasion,
-              climate: quizResponses.climate,
-              style: quizResponses.style,
-            }),
+            body: JSON.stringify(feedbackPayload),
           })
         } catch (err) {
           console.error('Erro ao salvar feedback:', err)
@@ -111,9 +123,15 @@ export default function ResultadoPage() {
         payload.user_feedback = feedback
         // Enviar IDs das peças anteriores para a IA evitar
         payload.previous_look = {
-          top_item_id: look.top.id,
-          bottom_item_id: look.bottom.id,
           shoes_item_id: look.shoes.id
+        }
+
+        // Add dress or top+bottom to previous_look
+        if (look.dress) {
+          payload.previous_look.dress_item_id = look.dress.id
+        } else {
+          payload.previous_look.top_item_id = look.top?.id
+          payload.previous_look.bottom_item_id = look.bottom?.id
         }
       }
 
@@ -231,138 +249,201 @@ export default function ResultadoPage() {
       const topName = data?.look?.top?.name
       const bottomId = data?.look?.bottom?.id
       const bottomName = data?.look?.bottom?.name
+      const dressId = data?.look?.dress?.id
+      const dressName = data?.look?.dress?.name
       const shoesId = data?.look?.shoes?.id
       const shoesName = data?.look?.shoes?.name
       const reasoning = data?.reasoning
 
+      const isDressLook = !!dressId // Vestido substitui top + bottom
+
       console.log('🎯 [DEBUG] IDs EXTRAÍDOS (estrutura corrigida):')
-      console.log('  topId:', topId, '| Tipo:', typeof topId)
-      console.log('  topName:', topName)
-      console.log('  bottomId:', bottomId, '| Tipo:', typeof bottomId)
-      console.log('  bottomName:', bottomName)
-      console.log('  shoesId:', shoesId, '| Tipo:', typeof shoesId)
-      console.log('  shoesName:', shoesName)
-      console.log('  reasoning:', reasoning)
+      console.log('  👗 dressId:', dressId, '| Tipo:', typeof dressId)
+      console.log('  👗 dressName:', dressName)
+      console.log('  👕 topId:', topId, '| Tipo:', typeof topId)
+      console.log('  👕 topName:', topName)
+      console.log('  👖 bottomId:', bottomId, '| Tipo:', typeof bottomId)
+      console.log('  👖 bottomName:', bottomName)
+      console.log('  👟 shoesId:', shoesId, '| Tipo:', typeof shoesId)
+      console.log('  👟 shoesName:', shoesName)
+      console.log('  📝 reasoning:', reasoning)
+      console.log('  🎯 isDressLook:', isDressLook)
 
       // Verificar se os IDs são válidos antes de prosseguir
-      if (!topId || !bottomId || !shoesId) {
-        console.error("❌❌❌ IDs INVÁLIDOS DETECTADOS! ❌❌❌")
-        console.error("topId válido?", !!topId)
-        console.error("bottomId válido?", !!bottomId)
-        console.error("shoesId válido?", !!shoesId)
-        console.error("Objeto completo recebido:", data)
-        throw new Error("IDs das peças não foram retornados pelo N8N")
+      if (isDressLook) {
+        // Look com vestido: precisa de dress + shoes
+        if (!dressId || !shoesId) {
+          console.error("❌❌❌ IDs INVÁLIDOS PARA LOOK COM VESTIDO! ❌❌❌")
+          console.error("dressId válido?", !!dressId)
+          console.error("shoesId válido?", !!shoesId)
+          console.error("Objeto completo recebido:", data)
+          throw new Error("IDs das peças não foram retornados pelo N8N")
+        }
+      } else {
+        // Look tradicional: precisa de top + bottom + shoes
+        if (!topId || !bottomId || !shoesId) {
+          console.error("❌❌❌ IDs INVÁLIDOS PARA LOOK TRADICIONAL! ❌❌❌")
+          console.error("topId válido?", !!topId)
+          console.error("bottomId válido?", !!bottomId)
+          console.error("shoesId válido?", !!shoesId)
+          console.error("Objeto completo recebido:", data)
+          throw new Error("IDs das peças não foram retornados pelo N8N")
+        }
       }
 
       console.log("\n✅ [DEBUG] Todos os IDs são válidos! Prosseguindo com busca no Supabase...")
 
       if (data.success !== undefined ? data.success : true) { // Permitir continuar mesmo se success não existir
         console.log("\n\n🔍 [DEBUG] ========== INICIANDO BUSCA DE ITENS NO SUPABASE ==========")
-        console.log("🔍 [DEBUG] Usando IDs extraídos do ROOT de data:")
-        console.log("  👕 TOP ID:", topId, "| Tipo:", typeof topId)
-        console.log("  👖 BOTTOM ID:", bottomId, "| Tipo:", typeof bottomId)
-        console.log("  👟 SHOES ID:", shoesId, "| Tipo:", typeof shoesId)
+        console.log("🔍 [DEBUG] Tipo de look:", isDressLook ? "VESTIDO" : "TRADICIONAL")
 
-        // Buscar itens completos no Supabase (incluindo image_url)
-        console.log("\n👕 [DEBUG] ========== BUSCANDO TOP NO SUPABASE ==========")
-        console.log("👕 [DEBUG] Usando variável topId:", topId)
-        console.log("👕 [DEBUG] Tipo do ID:", typeof topId)
-        console.log("👕 [DEBUG] Query: SELECT * FROM closet_items WHERE id =", topId)
+        let processedLook: ProcessedLook
 
-        const { data: topItem, error: topError } = await supabase
-          .from("closet_items")
-          .select("*")
-          .eq("id", topId)
-          .single()
+        if (isDressLook) {
+          // LOOK COM VESTIDO: buscar apenas dress + shoes
+          console.log("👗 [DEBUG] ========== BUSCANDO DRESS NO SUPABASE ==========")
+          console.log("👗 [DEBUG] Usando variável dressId:", dressId)
 
-        console.log("👕 [DEBUG] ========== RESULTADO DA BUSCA TOP ==========")
-        console.log("👕 [DEBUG] Item encontrado:", topItem)
-        console.log("👕 [DEBUG] Erro:", topError)
-        if (topError) {
-          console.error("👕 [DEBUG] ❌ Código do erro:", topError.code)
-          console.error("👕 [DEBUG] ❌ Mensagem:", topError.message)
-          console.error("👕 [DEBUG] ❌ Detalhes:", topError.details)
-        }
-        if (topItem) {
-          console.log("👕 [DEBUG] ✅ ID do item:", topItem.id)
-          console.log("👕 [DEBUG] ✅ Nome do item:", topItem.name)
-          console.log("👕 [DEBUG] ✅ Image URL:", topItem.image_url)
-        }
+          const { data: dressItem, error: dressError } = await supabase
+            .from("closet_items")
+            .select("*")
+            .eq("id", dressId)
+            .single()
 
-        console.log("\n👖 [DEBUG] ========== BUSCANDO BOTTOM NO SUPABASE ==========")
-        console.log("👖 [DEBUG] Usando variável bottomId:", bottomId)
-        console.log("👖 [DEBUG] Tipo do ID:", typeof bottomId)
+          console.log("👗 [DEBUG] ========== RESULTADO DA BUSCA DRESS ==========")
+          console.log("👗 [DEBUG] Item encontrado:", dressItem)
+          console.log("👗 [DEBUG] Erro:", dressError)
 
-        const { data: bottomItem, error: bottomError } = await supabase
-          .from("closet_items")
-          .select("*")
-          .eq("id", bottomId)
-          .single()
+          console.log("\n👟 [DEBUG] ========== BUSCANDO SHOES NO SUPABASE ==========")
+          console.log("👟 [DEBUG] Usando variável shoesId:", shoesId)
 
-        console.log("👖 [DEBUG] ========== RESULTADO DA BUSCA BOTTOM ==========")
-        console.log("👖 [DEBUG] Item encontrado:", bottomItem)
-        console.log("👖 [DEBUG] Erro:", bottomError)
-        if (bottomError) {
-          console.error("👖 [DEBUG] ❌ Código do erro:", bottomError.code)
-        }
-        if (bottomItem) {
-          console.log("👖 [DEBUG] ✅ Nome:", bottomItem.name)
-          console.log("👖 [DEBUG] ✅ Image URL:", bottomItem.image_url)
-        }
+          const { data: shoesItem, error: shoesError } = await supabase
+            .from("closet_items")
+            .select("*")
+            .eq("id", shoesId)
+            .single()
 
-        console.log("\n👟 [DEBUG] ========== BUSCANDO SHOES NO SUPABASE ==========")
-        console.log("👟 [DEBUG] Usando variável shoesId:", shoesId)
-        console.log("👟 [DEBUG] Tipo do ID:", typeof shoesId)
+          console.log("👟 [DEBUG] ========== RESULTADO DA BUSCA SHOES ==========")
+          console.log("👟 [DEBUG] Item encontrado:", shoesItem)
+          console.log("👟 [DEBUG] Erro:", shoesError)
 
-        const { data: shoesItem, error: shoesError } = await supabase
-          .from("closet_items")
-          .select("*")
-          .eq("id", shoesId)
-          .single()
+          // Verificar se os itens foram encontrados
+          if (!dressItem || !shoesItem) {
+            console.error("❌ [DEBUG] Algum item não foi encontrado no Supabase!")
+            console.error("  DRESS:", dressItem ? "✅ FOUND" : "❌ NOT FOUND")
+            console.error("  SHOES:", shoesItem ? "✅ FOUND" : "❌ NOT FOUND")
+            throw new Error("Itens do look não encontrados no banco de dados")
+          }
 
-        console.log("👟 [DEBUG] ========== RESULTADO DA BUSCA SHOES ==========")
-        console.log("👟 [DEBUG] Item encontrado:", shoesItem)
-        console.log("👟 [DEBUG] Erro:", shoesError)
-        if (shoesError) {
-          console.error("👟 [DEBUG] ❌ Código do erro:", shoesError.code)
-        }
-        if (shoesItem) {
-          console.log("👟 [DEBUG] ✅ Nome:", shoesItem.name)
-          console.log("👟 [DEBUG] ✅ Image URL:", shoesItem.image_url)
-        }
+          console.log("\n🖼️ [DEBUG] ========== CONSTRUINDO LOOK COM VESTIDO ==========")
+          processedLook = {
+            dress: {
+              id: dressItem.id,
+              name: dressItem.name,
+              image_url: dressItem.image_url
+            },
+            shoes: {
+              id: shoesItem.id,
+              name: shoesItem.name,
+              image_url: shoesItem.image_url
+            },
+            reasoning: reasoning || "Look criado com sucesso!"
+          }
 
-        // Verificar se todos os itens foram encontrados
-        if (!topItem || !bottomItem || !shoesItem) {
-          console.error("❌ [DEBUG] Algum item não foi encontrado no Supabase!")
-          console.error("  TOP:", topItem ? "✅ FOUND" : "❌ NOT FOUND")
-          console.error("  BOTTOM:", bottomItem ? "✅ FOUND" : "❌ NOT FOUND")
-          console.error("  SHOES:", shoesItem ? "✅ FOUND" : "❌ NOT FOUND")
-          throw new Error("Itens do look não encontrados no banco de dados")
-        }
+          // Salvar imagens separadamente
+          setLookImages({
+            top: null,
+            bottom: null,
+            dress: dressItem.image_url,
+            shoes: shoesItem.image_url,
+          })
 
-        console.log("\n🖼️ [DEBUG] ========== CONSTRUINDO LOOK PROCESSADO ==========")
-        console.log("🖼️ [DEBUG] TOP image_url:", topItem.image_url)
-        console.log("🖼️ [DEBUG] BOTTOM image_url:", bottomItem.image_url)
-        console.log("🖼️ [DEBUG] SHOES image_url:", shoesItem.image_url)
+          console.log("🖼️ [DEBUG] ✅ Look com vestido criado!")
+          console.log("  👗 DRESS:", dressItem.name)
+          console.log("  👟 SHOES:", shoesItem.name)
 
-        // Construir o look processado com os dados completos do Supabase
-        const processedLook: ProcessedLook = {
-          top: {
-            id: topItem.id,
-            name: topItem.name,
-            image_url: topItem.image_url
-          },
-          bottom: {
-            id: bottomItem.id,
-            name: bottomItem.name,
-            image_url: bottomItem.image_url
-          },
-          shoes: {
-            id: shoesItem.id,
-            name: shoesItem.name,
-            image_url: shoesItem.image_url
-          },
-          reasoning: reasoning || "Look criado com sucesso!"
+        } else {
+          // LOOK TRADICIONAL: buscar top + bottom + shoes
+          console.log("\n👕 [DEBUG] ========== BUSCANDO TOP NO SUPABASE ==========")
+          console.log("👕 [DEBUG] Usando variável topId:", topId)
+
+          const { data: topItem, error: topError } = await supabase
+            .from("closet_items")
+            .select("*")
+            .eq("id", topId)
+            .single()
+
+          console.log("👕 [DEBUG] ========== RESULTADO DA BUSCA TOP ==========")
+          console.log("👕 [DEBUG] Item encontrado:", topItem)
+          console.log("👕 [DEBUG] Erro:", topError)
+
+          console.log("\n👖 [DEBUG] ========== BUSCANDO BOTTOM NO SUPABASE ==========")
+          console.log("👖 [DEBUG] Usando variável bottomId:", bottomId)
+
+          const { data: bottomItem, error: bottomError } = await supabase
+            .from("closet_items")
+            .select("*")
+            .eq("id", bottomId)
+            .single()
+
+          console.log("👖 [DEBUG] ========== RESULTADO DA BUSCA BOTTOM ==========")
+          console.log("👖 [DEBUG] Item encontrado:", bottomItem)
+          console.log("👖 [DEBUG] Erro:", bottomError)
+
+          console.log("\n👟 [DEBUG] ========== BUSCANDO SHOES NO SUPABASE ==========")
+          console.log("👟 [DEBUG] Usando variável shoesId:", shoesId)
+
+          const { data: shoesItem, error: shoesError } = await supabase
+            .from("closet_items")
+            .select("*")
+            .eq("id", shoesId)
+            .single()
+
+          console.log("👟 [DEBUG] ========== RESULTADO DA BUSCA SHOES ==========")
+          console.log("👟 [DEBUG] Item encontrado:", shoesItem)
+          console.log("👟 [DEBUG] Erro:", shoesError)
+
+          // Verificar se todos os itens foram encontrados
+          if (!topItem || !bottomItem || !shoesItem) {
+            console.error("❌ [DEBUG] Algum item não foi encontrado no Supabase!")
+            console.error("  TOP:", topItem ? "✅ FOUND" : "❌ NOT FOUND")
+            console.error("  BOTTOM:", bottomItem ? "✅ FOUND" : "❌ NOT FOUND")
+            console.error("  SHOES:", shoesItem ? "✅ FOUND" : "❌ NOT FOUND")
+            throw new Error("Itens do look não encontrados no banco de dados")
+          }
+
+          console.log("\n🖼️ [DEBUG] ========== CONSTRUINDO LOOK TRADICIONAL ==========")
+          processedLook = {
+            top: {
+              id: topItem.id,
+              name: topItem.name,
+              image_url: topItem.image_url
+            },
+            bottom: {
+              id: bottomItem.id,
+              name: bottomItem.name,
+              image_url: bottomItem.image_url
+            },
+            shoes: {
+              id: shoesItem.id,
+              name: shoesItem.name,
+              image_url: shoesItem.image_url
+            },
+            reasoning: reasoning || "Look criado com sucesso!"
+          }
+
+          // Salvar imagens separadamente
+          setLookImages({
+            top: topItem.image_url,
+            bottom: bottomItem.image_url,
+            dress: null,
+            shoes: shoesItem.image_url,
+          })
+
+          console.log("🖼️ [DEBUG] ✅ Look tradicional criado!")
+          console.log("  👕 TOP:", topItem.name)
+          console.log("  👖 BOTTOM:", bottomItem.name)
+          console.log("  👟 SHOES:", shoesItem.name)
         }
 
         console.log("🖼️ [DEBUG] Look processado criado:", processedLook)
@@ -370,18 +451,7 @@ export default function ResultadoPage() {
         // Salvar look processado no state
         setLook(processedLook)
 
-        // Salvar imagens separadamente para o estado de imagens
-        setLookImages({
-          top: topItem.image_url,
-          bottom: bottomItem.image_url,
-          shoes: shoesItem.image_url,
-        })
-
         console.log("🖼️ [DEBUG] ✅ States atualizados com sucesso!")
-        console.log("🖼️ [DEBUG] Resumo final:")
-        console.log("  👕 TOP:", topItem.name, topItem.image_url ? `(${topItem.image_url.substring(0, 50)}...)` : "")
-        console.log("  👖 BOTTOM:", bottomItem.name, bottomItem.image_url ? `(${bottomItem.image_url.substring(0, 50)}...)` : "")
-        console.log("  👟 SHOES:", shoesItem.name, shoesItem.image_url ? `(${shoesItem.image_url.substring(0, 50)}...)` : "")
         console.log("========================================\n\n")
       }
     } catch (err: any) {
@@ -427,16 +497,24 @@ export default function ResultadoPage() {
       }
 
       // Create shareable look via API
+      const sharePayload: any = {
+        shoes_item_id: look.shoes.id,
+        reasoning: look.reasoning,
+        ...quizContext,
+      }
+
+      // Add dress or top+bottom
+      if (look.dress) {
+        sharePayload.dress_item_id = look.dress.id
+      } else {
+        sharePayload.top_item_id = look.top?.id
+        sharePayload.bottom_item_id = look.bottom?.id
+      }
+
       const response = await fetch('/api/share-look', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          top_item_id: look.top.id,
-          bottom_item_id: look.bottom.id,
-          shoes_item_id: look.shoes.id,
-          reasoning: look.reasoning,
-          ...quizContext,
-        }),
+        body: JSON.stringify(sharePayload),
       })
 
       const data = await response.json()
@@ -696,86 +774,128 @@ export default function ResultadoPage() {
           <div className="max-w-[400px] mx-auto mb-8">
             <div className="flex flex-col items-center">
 
-              {/* BLUSA - maior z-index */}
-              <div className="text-center w-full relative z-30">
-                <div className="max-w-[300px] mx-auto h-[280px] bg-white rounded-xl overflow-hidden relative shadow-md">
-                  {/* TODO: Reativar botão de refresh quando implementar no N8N */}
-
-                  {lookImages.top ? (
-                    <>
-                      {console.log("🎨 [RENDER] Renderizando TOP image:", lookImages.top)}
-                      <Image
-                        src={lookImages.top}
-                        alt={look.top.name}
-                        fill
-                        className="object-contain"
-                        unoptimized
-                      />
-                    </>
-                  ) : (
-                    <>
-                      {console.log("🎨 [RENDER] TOP image NULL - mostrando loader")}
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-                      </div>
-                    </>
-                  )}
-                </div>
-                <div className="mt-3 mb-2">
-                  <p className="font-medium text-sm text-gray-500 uppercase mb-1">Top</p>
-                  <p className="font-bold">{look.top.name}</p>
-                </div>
-              </div>
-
-              {/* CALÇA - z-index médio, sobrepõe a blusa */}
-              <div className="text-center w-full relative z-20 -mt-8">
-                <div className="max-w-[300px] mx-auto h-[320px] bg-white rounded-xl overflow-hidden relative shadow-md">
-                  {/* TODO: Reativar botão de refresh quando implementar no N8N */}
-
-                  {lookImages.bottom ? (
-                    <Image
-                      src={lookImages.bottom}
-                      alt={look.bottom.name}
-                      fill
-                      className="object-contain"
-                      unoptimized
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+              {look.dress ? (
+                // LOOK COM VESTIDO: mostrar apenas vestido + sapatos
+                <>
+                  {/* VESTIDO */}
+                  <div className="text-center w-full relative z-30">
+                    <div className="max-w-[300px] mx-auto h-[450px] bg-white rounded-xl overflow-hidden relative shadow-md">
+                      {lookImages.dress ? (
+                        <Image
+                          src={lookImages.dress}
+                          alt={look.dress.name}
+                          fill
+                          className="object-contain"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                <div className="mt-3 mb-2">
-                  <p className="font-medium text-sm text-gray-500 uppercase mb-1">Bottom</p>
-                  <p className="font-bold">{look.bottom.name}</p>
-                </div>
-              </div>
-
-              {/* TÊNIS - menor z-index, sobrepõe a calça */}
-              <div className="text-center w-full relative z-10 -mt-8">
-                <div className="max-w-[300px] mx-auto h-[200px] bg-white rounded-xl overflow-hidden relative shadow-md">
-                  {/* TODO: Reativar botão de refresh quando implementar no N8N */}
-
-                  {lookImages.shoes ? (
-                    <Image
-                      src={lookImages.shoes}
-                      alt={look.shoes.name}
-                      fill
-                      className="object-contain"
-                      unoptimized
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                    <div className="mt-3 mb-2">
+                      <p className="font-medium text-sm text-gray-500 uppercase mb-1">Vestido</p>
+                      <p className="font-bold">{look.dress.name}</p>
                     </div>
-                  )}
-                </div>
-                <div className="mt-3">
-                  <p className="font-medium text-sm text-gray-500 uppercase mb-1">Shoes</p>
-                  <p className="font-bold">{look.shoes.name}</p>
-                </div>
-              </div>
+                  </div>
+
+                  {/* SAPATOS - sobrepõe o vestido */}
+                  <div className="text-center w-full relative z-20 -mt-8">
+                    <div className="max-w-[300px] mx-auto h-[200px] bg-white rounded-xl overflow-hidden relative shadow-md">
+                      {lookImages.shoes ? (
+                        <Image
+                          src={lookImages.shoes}
+                          alt={look.shoes.name}
+                          fill
+                          className="object-contain"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-3">
+                      <p className="font-medium text-sm text-gray-500 uppercase mb-1">Shoes</p>
+                      <p className="font-bold">{look.shoes.name}</p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                // LOOK TRADICIONAL: mostrar top + bottom + shoes
+                <>
+                  {/* BLUSA - maior z-index */}
+                  <div className="text-center w-full relative z-30">
+                    <div className="max-w-[300px] mx-auto h-[280px] bg-white rounded-xl overflow-hidden relative shadow-md">
+                      {lookImages.top ? (
+                        <Image
+                          src={lookImages.top}
+                          alt={look.top?.name || ''}
+                          fill
+                          className="object-contain"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-3 mb-2">
+                      <p className="font-medium text-sm text-gray-500 uppercase mb-1">Top</p>
+                      <p className="font-bold">{look.top?.name}</p>
+                    </div>
+                  </div>
+
+                  {/* CALÇA - z-index médio, sobrepõe a blusa */}
+                  <div className="text-center w-full relative z-20 -mt-8">
+                    <div className="max-w-[300px] mx-auto h-[320px] bg-white rounded-xl overflow-hidden relative shadow-md">
+                      {lookImages.bottom ? (
+                        <Image
+                          src={lookImages.bottom}
+                          alt={look.bottom?.name || ''}
+                          fill
+                          className="object-contain"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-3 mb-2">
+                      <p className="font-medium text-sm text-gray-500 uppercase mb-1">Bottom</p>
+                      <p className="font-bold">{look.bottom?.name}</p>
+                    </div>
+                  </div>
+
+                  {/* TÊNIS - menor z-index, sobrepõe a calça */}
+                  <div className="text-center w-full relative z-10 -mt-8">
+                    <div className="max-w-[300px] mx-auto h-[200px] bg-white rounded-xl overflow-hidden relative shadow-md">
+                      {lookImages.shoes ? (
+                        <Image
+                          src={lookImages.shoes}
+                          alt={look.shoes.name}
+                          fill
+                          className="object-contain"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-3">
+                      <p className="font-medium text-sm text-gray-500 uppercase mb-1">Shoes</p>
+                      <p className="font-bold">{look.shoes.name}</p>
+                    </div>
+                  </div>
+                </>
+              )}
 
             </div>
           </div>

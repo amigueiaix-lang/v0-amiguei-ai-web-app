@@ -19,6 +19,7 @@ export async function POST(request: Request) {
       user_id,
       top_item_id,
       bottom_item_id,
+      dress_item_id,
       shoes_item_id,
       feedback_type,
       occasion,
@@ -27,10 +28,15 @@ export async function POST(request: Request) {
     } = body
 
     // Validate required fields
-    if (!top_item_id || !bottom_item_id || !shoes_item_id || !feedback_type) {
+    const isDressLook = !!dress_item_id
+    const hasRequiredItems = isDressLook
+      ? (dress_item_id && shoes_item_id)
+      : (top_item_id && bottom_item_id && shoes_item_id)
+
+    if (!hasRequiredItems || !feedback_type) {
       return NextResponse.json(
         {
-          error: 'Campos obrigatórios faltando: top_item_id, bottom_item_id, shoes_item_id, feedback_type',
+          error: 'Campos obrigatórios faltando: Para look com vestido (dress_item_id, shoes_item_id) ou look tradicional (top_item_id, bottom_item_id, shoes_item_id), e feedback_type',
         },
         { status: 400 }
       )
@@ -46,18 +52,29 @@ export async function POST(request: Request) {
     }
 
     // Insert feedback into database
+    const feedbackData: any = {
+      user_id: user.id,
+      feedback_type,
+      shoes_item_id,
+      occasion: occasion || null,
+      climate: climate || null,
+      style: style || null,
+    }
+
+    // Add dress or top+bottom based on look type
+    if (isDressLook) {
+      feedbackData.dress_item_id = dress_item_id
+      feedbackData.top_item_id = null
+      feedbackData.bottom_item_id = null
+    } else {
+      feedbackData.top_item_id = top_item_id
+      feedbackData.bottom_item_id = bottom_item_id
+      feedbackData.dress_item_id = null
+    }
+
     const { data: feedback, error: insertError } = await supabase
       .from('look_feedback')
-      .insert({
-        user_id: user.id,
-        top_item_id,
-        bottom_item_id,
-        shoes_item_id,
-        feedback_type,
-        occasion: occasion || null,
-        climate: climate || null,
-        style: style || null,
-      })
+      .insert(feedbackData)
       .select()
       .single()
 
@@ -95,6 +112,7 @@ export async function GET(request: Request) {
         *,
         top_item:closet_items!look_feedback_top_item_id_fkey(id, name, image_url),
         bottom_item:closet_items!look_feedback_bottom_item_id_fkey(id, name, image_url),
+        dress_item:closet_items!look_feedback_dress_item_id_fkey(id, name, image_url),
         shoes_item:closet_items!look_feedback_shoes_item_id_fkey(id, name, image_url)
       `)
       .eq('user_id', user.id)

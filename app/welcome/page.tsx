@@ -3,8 +3,8 @@
 import type React from "react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
+import { Header } from "@/components/Header"
 
 export default function WelcomePage() {
   const router = useRouter()
@@ -27,11 +27,11 @@ export default function WelcomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-white px-6 py-4 flex flex-col">
-      <div className="w-full max-w-[600px] mx-auto flex flex-col items-center justify-center min-h-screen">
-        <Logo />
+    <div className="min-h-screen bg-white flex flex-col">
+      <Header />
 
-        <div className="text-center mb-8">
+      <div className="w-full max-w-[600px] mx-auto flex flex-col items-center justify-center px-6 pt-20 pb-8">
+        <div className="text-center mb-8 mt-12">
           <h1 className="text-4xl font-bold mb-4">
             Parabéns, {userName || "Bem-vinda"}! 🎉
           </h1>

@@ -334,6 +334,40 @@ export default function AvaliacaoPage() {
     )
   }
 
+  // Empty closet state - show before form
+  if (closetItems.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-purple-50 px-4">
+        <div className="text-center max-w-md bg-white rounded-2xl shadow-xl p-8">
+          <div className="w-20 h-20 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-pink-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold mb-3 text-gray-900">Seu closet está vazio!</h2>
+          <p className="text-gray-600 mb-6 leading-relaxed">
+            Para criar looks personalizados, precisamos que você adicione algumas peças ao seu closet virtual primeiro.
+            É rápido e fácil!
+          </p>
+          <div className="space-y-3">
+            <button
+              onClick={() => router.push("/closet")}
+              className="w-full px-6 py-4 bg-gradient-to-r from-[#FF69B4] to-[#E91E63] text-white rounded-xl font-semibold hover:brightness-110 transition-all shadow-md"
+            >
+              Ir para o Closet
+            </button>
+            <button
+              onClick={() => router.push("/")}
+              className="w-full px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-all"
+            >
+              Voltar ao início
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Loading state (evaluating look)
   if (submitting) {
     return (
@@ -389,22 +423,7 @@ export default function AvaliacaoPage() {
                 <p className="text-gray-600">Selecione as peças do seu closet e descreva a ocasião</p>
               </div>
 
-              {/* Empty state */}
-              {closetItems.length === 0 ? (
-                <div className="bg-white border border-gray-200 rounded-xl p-12 text-center">
-                  <Shirt className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">Seu closet está vazio</h3>
-                  <p className="text-gray-600 mb-6">
-                    Você precisa adicionar peças ao seu closet antes de avaliar um look.
-                  </p>
-                  <Link href="/closet">
-                    <button className="px-6 py-3 bg-pink-500 text-white rounded-xl font-medium hover:bg-pink-600 transition-colors">
-                      Ir para o Closet
-                    </button>
-                  </Link>
-                </div>
-              ) : (
-                <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-6">
+              <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-6">
                   {/* Top selection */}
                   <div className="space-y-2 relative">
                     <label className="block text-base font-medium">
@@ -642,7 +661,6 @@ export default function AvaliacaoPage() {
                     </p>
                   )}
                 </div>
-              )}
             </>
           ) : (
             // Evaluation result

@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react"
 import { Search, X, Star, Loader2, Shirt } from "lucide-react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { Header } from "@/components/Header"
 import { supabase } from "@/lib/supabase"
 import type { ClosetItem, SelectedPieces, EvaluationPayload, EvaluationResult } from "@/types/evaluation"

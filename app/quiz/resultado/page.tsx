@@ -780,10 +780,11 @@ export default function ResultadoPage() {
             </div>
           </div>
 
-          <div className="bg-pink-50 border border-pink-200 rounded-xl p-6">
+          {/* TODO: Reativar quando o reasoning estiver funcionando corretamente */}
+          {/* <div className="bg-pink-50 border border-pink-200 rounded-xl p-6">
             <h3 className="font-bold text-xl mb-3 text-pink-600">Por que esse look?</h3>
             <p className="text-gray-700 leading-relaxed">{look.reasoning}</p>
-          </div>
+          </div> */}
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">

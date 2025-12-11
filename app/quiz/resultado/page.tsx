@@ -50,7 +50,7 @@ export default function ResultadoPage() {
     generateLook()
   }, [])
 
-  const generateLook = async () => {
+  const generateLook = async (feedback?: string | null) => {
     try {
       setLoading(true)
       setError(null)
@@ -78,9 +78,37 @@ export default function ResultadoPage() {
         extra_info: answers[4] || "",
       }
 
-      const payload = {
+      // Se houver feedback e um look atual, salvar o feedback antes de gerar novo look
+      if (feedback && look) {
+        try {
+          await fetch('/api/look-feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: user.id,
+              top_item_id: look.top.id,
+              bottom_item_id: look.bottom.id,
+              shoes_item_id: look.shoes.id,
+              feedback_type: feedback,
+              occasion: quizResponses.occasion,
+              climate: quizResponses.climate,
+              style: quizResponses.style,
+            }),
+          })
+        } catch (err) {
+          console.error('Erro ao salvar feedback:', err)
+          // Continuar mesmo se falhar ao salvar feedback
+        }
+      }
+
+      const payload: any = {
         user_id: user.id,
         quiz_responses: quizResponses,
+      }
+
+      // Adicionar feedback ao payload se fornecido
+      if (feedback) {
+        payload.user_feedback = feedback
       }
 
       console.log("🚀 [1/5] Iniciando requisição para N8N...")
@@ -828,7 +856,7 @@ export default function ResultadoPage() {
                 <button
                   onClick={() => {
                     setShowFeedbackDialog(false)
-                    generateLook()
+                    generateLook(selectedFeedback)
                     setSelectedFeedback(null)
                   }}
                   disabled={!selectedFeedback}

@@ -244,15 +244,18 @@ export default function ResultadoPage() {
       console.log(JSON.stringify(data, null, 2))
       console.log('🔍 ========== FIM ==========')
 
-      // Estrutura correta: data.look.top.id, data.look.bottom.id, etc
-      const topId = data?.look?.top?.id
-      const topName = data?.look?.top?.name
-      const bottomId = data?.look?.bottom?.id
-      const bottomName = data?.look?.bottom?.name
-      const dressId = data?.look?.dress?.id
-      const dressName = data?.look?.dress?.name
-      const shoesId = data?.look?.shoes?.id
-      const shoesName = data?.look?.shoes?.name
+      // ✅ SUPORTE PARA MÚLTIPLOS FORMATOS:
+      // Formato 1 (aninhado): { look: { dress: { id, name }, shoes: { id, name } } }
+      // Formato 2 (plano): { dress_item_id, dress_item_name, shoes_item_id, shoes_item_name }
+
+      const topId = data?.look?.top?.id || data?.top_item_id
+      const topName = data?.look?.top?.name || data?.top_item_name
+      const bottomId = data?.look?.bottom?.id || data?.bottom_item_id
+      const bottomName = data?.look?.bottom?.name || data?.bottom_item_name
+      const dressId = data?.look?.dress?.id || data?.dress_item_id
+      const dressName = data?.look?.dress?.name || data?.dress_item_name
+      const shoesId = data?.look?.shoes?.id || data?.shoes_item_id
+      const shoesName = data?.look?.shoes?.name || data?.shoes_item_name
       const reasoning = data?.reasoning
 
       const isDressLook = !!dressId // Vestido substitui top + bottom

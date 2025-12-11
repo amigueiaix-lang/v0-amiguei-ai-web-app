@@ -107,8 +107,14 @@ export default function ResultadoPage() {
       }
 
       // Adicionar feedback ao payload se fornecido
-      if (feedback) {
+      if (feedback && look) {
         payload.user_feedback = feedback
+        // Enviar IDs das peças anteriores para a IA evitar
+        payload.previous_look = {
+          top_item_id: look.top.id,
+          bottom_item_id: look.bottom.id,
+          shoes_item_id: look.shoes.id
+        }
       }
 
       console.log("🚀 [1/5] Iniciando requisição para N8N...")

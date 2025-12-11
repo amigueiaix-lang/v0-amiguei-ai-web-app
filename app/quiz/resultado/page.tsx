@@ -43,6 +43,8 @@ export default function ResultadoPage() {
   // const [refreshingItem, setRefreshingItem] = useState<'top' | 'bottom' | 'shoes' | null>(null)
   const [isSharing, setIsSharing] = useState(false)
   const [shareUrl, setShareUrl] = useState<string | null>(null)
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false)
+  const [selectedFeedback, setSelectedFeedback] = useState<string | null>(null)
 
   useEffect(() => {
     generateLook()
@@ -378,28 +380,54 @@ export default function ResultadoPage() {
     try {
       setIsSharing(true)
 
-      // Criar um texto descritivo do look
-      const shareText = `Confira meu look criado com Amiguei.AI! 👗✨\n\n` +
-        `👕 ${look.top.name}\n` +
-        `👖 ${look.bottom.name}\n` +
-        `👟 ${look.shoes.name}\n\n` +
-        `${look.reasoning}`
+      // Get quiz answers for context
+      const answersJson = localStorage.getItem("amiguei-quiz-answers")
+      let quizContext = {}
+      if (answersJson) {
+        const answers = JSON.parse(answersJson)
+        quizContext = {
+          occasion: answers[0] || null,
+          style: answers[2] || null,
+          climate: answers[1] || null,
+        }
+      }
 
-      // Verificar se o navegador suporta Web Share API
+      // Create shareable look via API
+      const response = await fetch('/api/share-look', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          top_item_id: look.top.id,
+          bottom_item_id: look.bottom.id,
+          shoes_item_id: look.shoes.id,
+          reasoning: look.reasoning,
+          ...quizContext,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao criar link compartilhável')
+      }
+
+      const shareUrl = data.share_url
+
+      // Try to use native share API
       if (navigator.share) {
         await navigator.share({
           title: 'Meu Look - Amiguei.AI',
-          text: shareText,
-          url: window.location.href,
+          text: `Confira meu look criado com Amiguei.AI! 👗✨`,
+          url: shareUrl,
         })
         toast.success('Look compartilhado com sucesso! 🎉')
       } else {
-        // Fallback: copiar para clipboard
-        await navigator.clipboard.writeText(shareText)
-        setShareUrl(window.location.href)
-        toast.success('Texto copiado para área de transferência! 📋')
+        // Fallback: copy link to clipboard
+        await navigator.clipboard.writeText(shareUrl)
+        setShareUrl(shareUrl)
+        toast.success('Link copiado para área de transferência! 📋')
 
-        // Resetar após 3 segundos
+        // Reset after 3 seconds
         setTimeout(() => {
           setShareUrl(null)
         }, 3000)
@@ -726,7 +754,7 @@ export default function ResultadoPage() {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <button
-            onClick={generateLook}
+            onClick={() => setShowFeedbackDialog(true)}
             disabled={loading}
             className="flex-1 max-w-xs px-8 py-4 border-2 border-pink-500 text-pink-500 rounded-xl font-semibold hover:bg-pink-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -753,6 +781,65 @@ export default function ResultadoPage() {
             )}
           </button>
         </div>
+
+        {/* Feedback Dialog */}
+        {showFeedbackDialog && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900">
+                O que você não gostou neste look?
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Nos conte para gerarmos um look mais adequado para você!
+              </p>
+
+              <div className="space-y-3 mb-6">
+                {[
+                  { value: 'colors', label: 'Não gostei das cores' },
+                  { value: 'style', label: 'Não combina com meu estilo' },
+                  { value: 'occasion', label: 'Não é adequado para a ocasião' },
+                  { value: 'combination', label: 'As peças não combinam entre si' },
+                  { value: 'other', label: 'Outro motivo' }
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setSelectedFeedback(option.value)}
+                    className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all ${
+                      selectedFeedback === option.value
+                        ? 'border-pink-500 bg-pink-50 text-pink-700 font-semibold'
+                        : 'border-gray-200 hover:border-pink-200 hover:bg-pink-50/50'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowFeedbackDialog(false)
+                    setSelectedFeedback(null)
+                  }}
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    setShowFeedbackDialog(false)
+                    generateLook()
+                    setSelectedFeedback(null)
+                  }}
+                  disabled={!selectedFeedback}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-xl font-semibold hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Gerar novo look
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

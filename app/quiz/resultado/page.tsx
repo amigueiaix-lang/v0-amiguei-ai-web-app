@@ -253,17 +253,26 @@ export default function ResultadoPage() {
       // ✅ SUPORTE PARA MÚLTIPLOS FORMATOS COM PRIORIDADE PARA FORMATO PLANO:
       // Formato 1 (plano - PRIORIDADE): { dress_item_id, dress_item_name, shoes_item_id, shoes_item_name }
       // Formato 2 (aninhado): { look: { dress: { id, name }, shoes: { id, name } } }
-      // IGNORA campos vazios ("") e null do formato plano e aninhado!
+      // IGNORA campos vazios (""), null, e strings só com espaços!
 
-      // Prioriza formato plano e ignora IDs vazios/null (usando trim() para validar)
-      const topId = data?.top_item_id?.trim() || data?.look?.top?.id?.trim() || undefined
-      const topName = data?.top_item_name?.trim() || data?.look?.top?.name?.trim() || undefined
-      const bottomId = data?.bottom_item_id?.trim() || data?.look?.bottom?.id?.trim() || undefined
-      const bottomName = data?.bottom_item_name?.trim() || data?.look?.bottom?.name?.trim() || undefined
-      const dressId = data?.dress_item_id?.trim() || data?.look?.dress?.id?.trim() || undefined
-      const dressName = data?.dress_item_name?.trim() || data?.look?.dress?.name?.trim() || undefined
-      const shoesId = data?.shoes_item_id?.trim() || data?.look?.shoes?.id?.trim() || undefined
-      const shoesName = data?.shoes_item_name?.trim() || data?.look?.shoes?.name?.trim() || undefined
+      // Helper para extrair valores válidos (strings não-vazias)
+      const getValue = (value: any): string | undefined => {
+        if (typeof value === 'string') {
+          const trimmed = value.trim()
+          return trimmed || undefined // retorna undefined se for string vazia
+        }
+        return undefined
+      }
+
+      // Prioriza formato plano e ignora IDs vazios/null
+      const topId = getValue(data?.top_item_id) || getValue(data?.look?.top?.id)
+      const topName = getValue(data?.top_item_name) || getValue(data?.look?.top?.name)
+      const bottomId = getValue(data?.bottom_item_id) || getValue(data?.look?.bottom?.id)
+      const bottomName = getValue(data?.bottom_item_name) || getValue(data?.look?.bottom?.name)
+      const dressId = getValue(data?.dress_item_id) || getValue(data?.look?.dress?.id)
+      const dressName = getValue(data?.dress_item_name) || getValue(data?.look?.dress?.name)
+      const shoesId = getValue(data?.shoes_item_id) || getValue(data?.look?.shoes?.id)
+      const shoesName = getValue(data?.shoes_item_name) || getValue(data?.look?.shoes?.name)
       const reasoning = data?.reasoning || data?.look?.reasoning
 
       const isDressLook = !!dressId // Vestido substitui top + bottom

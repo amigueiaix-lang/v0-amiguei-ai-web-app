@@ -166,7 +166,7 @@ export default function ResultadoPage() {
         throw new Error("N8N retornou resposta vazia")
       }
 
-      const rawData = JSON.parse(responseText)
+      let rawData = JSON.parse(responseText)
       console.log("✅ [SUCESSO] Data parsed (RAW):", rawData)
 
       // 🐛 DEBUG: Verificar estrutura completa do look
@@ -178,8 +178,14 @@ export default function ResultadoPage() {
       console.log("📦 [DEBUG] É array?", Array.isArray(rawData))
       console.log("📦 [DEBUG] Length (se array):", Array.isArray(rawData) ? rawData.length : "N/A")
 
-      // ✅ CORREÇÃO: N8N retorna ARRAY [{...}], não OBJETO {...}
-      const data = Array.isArray(rawData) ? rawData[0] : rawData
+      // ✅ CORREÇÃO: N8N pode retornar ARRAY [{...}] ou OBJETO {...}
+      // Se for array, pegar primeiro item
+      if (Array.isArray(rawData) && rawData.length > 0) {
+        rawData = rawData[0]
+        console.log("📦 [DEBUG] Convertido de array para objeto:", rawData)
+      }
+
+      const data = rawData
 
       console.log("🔍 ========== JSON COMPLETO DE data (ROOT) ==========")
       console.log(JSON.stringify(data, null, 2))
@@ -247,17 +253,17 @@ export default function ResultadoPage() {
       // ✅ SUPORTE PARA MÚLTIPLOS FORMATOS COM PRIORIDADE PARA FORMATO PLANO:
       // Formato 1 (plano - PRIORIDADE): { dress_item_id, dress_item_name, shoes_item_id, shoes_item_name }
       // Formato 2 (aninhado): { look: { dress: { id, name }, shoes: { id, name } } }
-      // IGNORA campos vazios/null do formato aninhado!
+      // IGNORA campos vazios ("") e null do formato plano e aninhado!
 
-      // Prioriza formato plano e ignora IDs vazios/null do formato aninhado
-      const topId = data?.top_item_id || (data?.look?.top?.id?.trim() ? data.look.top.id : undefined)
-      const topName = data?.top_item_name || (data?.look?.top?.name?.trim() ? data.look.top.name : undefined)
-      const bottomId = data?.bottom_item_id || (data?.look?.bottom?.id?.trim() ? data.look.bottom.id : undefined)
-      const bottomName = data?.bottom_item_name || (data?.look?.bottom?.name?.trim() ? data.look.bottom.name : undefined)
-      const dressId = data?.dress_item_id || (data?.look?.dress?.id?.trim() ? data.look.dress.id : undefined)
-      const dressName = data?.dress_item_name || (data?.look?.dress?.name?.trim() ? data.look.dress.name : undefined)
-      const shoesId = data?.shoes_item_id || (data?.look?.shoes?.id?.trim() ? data.look.shoes.id : undefined)
-      const shoesName = data?.shoes_item_name || (data?.look?.shoes?.name?.trim() ? data.look.shoes.name : undefined)
+      // Prioriza formato plano e ignora IDs vazios/null (usando trim() para validar)
+      const topId = data?.top_item_id?.trim() || data?.look?.top?.id?.trim() || undefined
+      const topName = data?.top_item_name?.trim() || data?.look?.top?.name?.trim() || undefined
+      const bottomId = data?.bottom_item_id?.trim() || data?.look?.bottom?.id?.trim() || undefined
+      const bottomName = data?.bottom_item_name?.trim() || data?.look?.bottom?.name?.trim() || undefined
+      const dressId = data?.dress_item_id?.trim() || data?.look?.dress?.id?.trim() || undefined
+      const dressName = data?.dress_item_name?.trim() || data?.look?.dress?.name?.trim() || undefined
+      const shoesId = data?.shoes_item_id?.trim() || data?.look?.shoes?.id?.trim() || undefined
+      const shoesName = data?.shoes_item_name?.trim() || data?.look?.shoes?.name?.trim() || undefined
       const reasoning = data?.reasoning || data?.look?.reasoning
 
       const isDressLook = !!dressId // Vestido substitui top + bottom

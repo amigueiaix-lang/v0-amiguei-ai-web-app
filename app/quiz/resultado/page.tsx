@@ -247,17 +247,17 @@ export default function ResultadoPage() {
       // ✅ SUPORTE PARA MÚLTIPLOS FORMATOS COM PRIORIDADE PARA FORMATO PLANO:
       // Formato 1 (plano - PRIORIDADE): { dress_item_id, dress_item_name, shoes_item_id, shoes_item_name }
       // Formato 2 (aninhado): { look: { dress: { id, name }, shoes: { id, name } } }
-      // IGNORA campos vazios no formato aninhado!
+      // IGNORA campos vazios/null do formato aninhado!
 
-      // Prioriza formato plano e ignora IDs vazios do formato aninhado
-      const topId = data?.top_item_id || (data?.look?.top?.id && data.look.top.id.trim() !== '' ? data.look.top.id : undefined)
-      const topName = data?.top_item_name || (data?.look?.top?.name && data.look.top.name.trim() !== '' ? data.look.top.name : undefined)
-      const bottomId = data?.bottom_item_id || (data?.look?.bottom?.id && data.look.bottom.id.trim() !== '' ? data.look.bottom.id : undefined)
-      const bottomName = data?.bottom_item_name || (data?.look?.bottom?.name && data.look.bottom.name.trim() !== '' ? data.look.bottom.name : undefined)
-      const dressId = data?.dress_item_id || (data?.look?.dress?.id && data.look.dress.id.trim() !== '' ? data.look.dress.id : undefined)
-      const dressName = data?.dress_item_name || (data?.look?.dress?.name && data.look.dress.name.trim() !== '' ? data.look.dress.name : undefined)
-      const shoesId = data?.shoes_item_id || (data?.look?.shoes?.id && data.look.shoes.id.trim() !== '' ? data.look.shoes.id : undefined)
-      const shoesName = data?.shoes_item_name || (data?.look?.shoes?.name && data.look.shoes.name.trim() !== '' ? data.look.shoes.name : undefined)
+      // Prioriza formato plano e ignora IDs vazios/null do formato aninhado
+      const topId = data?.top_item_id || (data?.look?.top?.id?.trim() ? data.look.top.id : undefined)
+      const topName = data?.top_item_name || (data?.look?.top?.name?.trim() ? data.look.top.name : undefined)
+      const bottomId = data?.bottom_item_id || (data?.look?.bottom?.id?.trim() ? data.look.bottom.id : undefined)
+      const bottomName = data?.bottom_item_name || (data?.look?.bottom?.name?.trim() ? data.look.bottom.name : undefined)
+      const dressId = data?.dress_item_id || (data?.look?.dress?.id?.trim() ? data.look.dress.id : undefined)
+      const dressName = data?.dress_item_name || (data?.look?.dress?.name?.trim() ? data.look.dress.name : undefined)
+      const shoesId = data?.shoes_item_id || (data?.look?.shoes?.id?.trim() ? data.look.shoes.id : undefined)
+      const shoesName = data?.shoes_item_name || (data?.look?.shoes?.name?.trim() ? data.look.shoes.name : undefined)
       const reasoning = data?.reasoning || data?.look?.reasoning
 
       const isDressLook = !!dressId // Vestido substitui top + bottom

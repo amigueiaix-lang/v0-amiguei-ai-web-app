@@ -170,9 +170,14 @@ export default function AvaliacaoPage() {
   const isDressLook = selectedPieces.dress !== null
   const isTraditionalLook = selectedPieces.top !== null && selectedPieces.bottom !== null
   const selectedCount = [
-    selectedPieces.dress || (selectedPieces.top && selectedPieces.bottom),
+    selectedPieces.dress,
+    selectedPieces.top,
+    selectedPieces.bottom,
     selectedPieces.shoes
   ].filter(Boolean).length
+
+  // Total de peças esperadas (2 para dress, 3 para traditional)
+  const expectedCount = isDressLook ? 2 : 3
 
   const canSubmit = () => {
     const hasValidPieces = isDressLook
@@ -685,7 +690,7 @@ export default function AvaliacaoPage() {
                   {selectedCount > 0 && (
                     <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl p-4">
                       <p className="text-sm font-medium mb-3">
-                        Peças selecionadas ({selectedCount}/2):
+                        Peças selecionadas ({selectedCount}/{expectedCount}):
                       </p>
                       <div className="flex gap-3 flex-wrap">
                         {selectedPieces.dress && (
@@ -795,8 +800,8 @@ export default function AvaliacaoPage() {
 
                   {!canSubmit() && selectedCount > 0 && (
                     <p className="text-sm text-center text-gray-500">
-                      {selectedCount < 2 && "Selecione vestido + sapatos OU top + bottom + sapatos"}
-                      {selectedCount === 2 && occasion.trim().length === 0 && "Descreva a ocasião para continuar"}
+                      {selectedCount < expectedCount && "Selecione vestido + sapatos OU top + bottom + sapatos"}
+                      {selectedCount === expectedCount && occasion.trim().length === 0 && "Descreva a ocasião para continuar"}
                     </p>
                   )}
                 </div>

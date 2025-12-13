@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { Search, X, Star, Loader2, Shirt } from "lucide-react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Header } from "@/components/Header"
 import { supabase } from "@/lib/supabase"
 import type { ClosetItem, SelectedPieces, EvaluationPayload, EvaluationResult } from "@/types/evaluation"
@@ -37,13 +38,15 @@ export default function AvaliacaoPage() {
   const [selectedPieces, setSelectedPieces] = useState<SelectedPieces>({
     top: null,
     bottom: null,
+    dress: null,
     shoes: null
   })
   const [occasion, setOccasion] = useState("")
   const [searchTop, setSearchTop] = useState("")
   const [searchBottom, setSearchBottom] = useState("")
+  const [searchDress, setSearchDress] = useState("")
   const [searchShoes, setSearchShoes] = useState("")
-  const [focusedField, setFocusedField] = useState<'top' | 'bottom' | 'shoes' | null>(null)
+  const [focusedField, setFocusedField] = useState<'top' | 'bottom' | 'dress' | 'shoes' | null>(null)
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null)
   const [userRating, setUserRating] = useState(0)
   const [hoveredStar, setHoveredStar] = useState(0)
@@ -51,6 +54,7 @@ export default function AvaliacaoPage() {
   // Debounced search values
   const debouncedSearchTop = useDebounce(searchTop, 300)
   const debouncedSearchBottom = useDebounce(searchBottom, 300)
+  const debouncedSearchDress = useDebounce(searchDress, 300)
   const debouncedSearchShoes = useDebounce(searchShoes, 300)
 
   // Fetch closet items from Supabase
@@ -104,23 +108,46 @@ export default function AvaliacaoPage() {
 
   const topItems = filterItems(CATEGORY_MAPPING.top as unknown as string[], debouncedSearchTop)
   const bottomItems = filterItems(CATEGORY_MAPPING.bottom as unknown as string[], debouncedSearchBottom)
+  const dressItems = filterItems(CATEGORY_MAPPING.dress as unknown as string[], debouncedSearchDress)
   const shoesItems = filterItems(CATEGORY_MAPPING.shoes as unknown as string[], debouncedSearchShoes)
 
   // Handle piece selection
   const handleSelectPiece = (type: keyof SelectedPieces, item: ClosetItem) => {
-    setSelectedPieces(prev => ({
-      ...prev,
-      [type]: item
-    }))
-
-    // Update search field, clear it, and close dropdown
-    if (type === "top") {
+    // Se selecionar vestido, limpar top e bottom
+    if (type === "dress") {
+      setSelectedPieces(prev => ({
+        ...prev,
+        dress: item,
+        top: null,
+        bottom: null
+      }))
+      setSearchDress("")
       setSearchTop("")
-      setFocusedField(null)
-    } else if (type === "bottom") {
       setSearchBottom("")
       setFocusedField(null)
-    } else {
+    }
+    // Se selecionar top ou bottom, limpar vestido
+    else if (type === "top" || type === "bottom") {
+      setSelectedPieces(prev => ({
+        ...prev,
+        [type]: item,
+        dress: null
+      }))
+      if (type === "top") {
+        setSearchTop("")
+        setSearchDress("")
+      } else {
+        setSearchBottom("")
+        setSearchDress("")
+      }
+      setFocusedField(null)
+    }
+    // Shoes não afeta outros campos
+    else {
+      setSelectedPieces(prev => ({
+        ...prev,
+        [type]: item
+      }))
       setSearchShoes("")
       setFocusedField(null)
     }
@@ -135,18 +162,24 @@ export default function AvaliacaoPage() {
 
     if (type === "top") setSearchTop("")
     else if (type === "bottom") setSearchBottom("")
+    else if (type === "dress") setSearchDress("")
     else setSearchShoes("")
   }
 
   // Validation
-  const selectedCount = [selectedPieces.top, selectedPieces.bottom, selectedPieces.shoes].filter(Boolean).length
+  const isDressLook = selectedPieces.dress !== null
+  const isTraditionalLook = selectedPieces.top !== null && selectedPieces.bottom !== null
+  const selectedCount = [
+    selectedPieces.dress || (selectedPieces.top && selectedPieces.bottom),
+    selectedPieces.shoes
+  ].filter(Boolean).length
+
   const canSubmit = () => {
-    return (
-      selectedPieces.top !== null &&
-      selectedPieces.bottom !== null &&
-      selectedPieces.shoes !== null &&
-      occasion.trim().length > 0
-    )
+    const hasValidPieces = isDressLook
+      ? (selectedPieces.dress !== null && selectedPieces.shoes !== null)
+      : (selectedPieces.top !== null && selectedPieces.bottom !== null && selectedPieces.shoes !== null)
+
+    return hasValidPieces && occasion.trim().length > 0
   }
 
   // Handle form submission
@@ -165,24 +198,39 @@ export default function AvaliacaoPage() {
         return
       }
 
-      // Prepare payload
-      const payload: EvaluationPayload = {
-        user_id: user.id,
-        pieces: {
-          top_id: selectedPieces.top!.id,
-          top_name: selectedPieces.top!.name,
-          bottom_id: selectedPieces.bottom!.id,
-          bottom_name: selectedPieces.bottom!.name,
-          shoes_id: selectedPieces.shoes!.id,
-          shoes_name: selectedPieces.shoes!.name,
-        },
-        occasion: occasion.trim(),
-        images: {
-          top_url: selectedPieces.top!.image_url,
-          bottom_url: selectedPieces.bottom!.image_url,
-          shoes_url: selectedPieces.shoes!.image_url,
-        }
-      }
+      // Prepare payload (dress OU top+bottom)
+      const payload: EvaluationPayload = isDressLook
+        ? {
+            user_id: user.id,
+            pieces: {
+              dress_id: selectedPieces.dress!.id,
+              dress_name: selectedPieces.dress!.name,
+              shoes_id: selectedPieces.shoes!.id,
+              shoes_name: selectedPieces.shoes!.name,
+            },
+            occasion: occasion.trim(),
+            images: {
+              dress_url: selectedPieces.dress!.image_url,
+              shoes_url: selectedPieces.shoes!.image_url,
+            }
+          }
+        : {
+            user_id: user.id,
+            pieces: {
+              top_id: selectedPieces.top!.id,
+              top_name: selectedPieces.top!.name,
+              bottom_id: selectedPieces.bottom!.id,
+              bottom_name: selectedPieces.bottom!.name,
+              shoes_id: selectedPieces.shoes!.id,
+              shoes_name: selectedPieces.shoes!.name,
+            },
+            occasion: occasion.trim(),
+            images: {
+              top_url: selectedPieces.top!.image_url,
+              bottom_url: selectedPieces.bottom!.image_url,
+              shoes_url: selectedPieces.shoes!.image_url,
+            }
+          }
 
       console.log("📤 Enviando para avaliação:", payload)
 
@@ -225,10 +273,11 @@ export default function AvaliacaoPage() {
 
   // Reset form
   const handleReset = () => {
-    setSelectedPieces({ top: null, bottom: null, shoes: null })
+    setSelectedPieces({ top: null, bottom: null, dress: null, shoes: null })
     setOccasion("")
     setSearchTop("")
     setSearchBottom("")
+    setSearchDress("")
     setSearchShoes("")
     setEvaluation(null)
     setUserRating(0)
@@ -381,6 +430,13 @@ export default function AvaliacaoPage() {
           <h2 className="text-3xl font-serif font-bold mb-3 text-gray-800">Analisando seu look...</h2>
           <p className="text-gray-600 text-lg mb-6">Nossa IA está avaliando suas escolhas</p>
           <div className="flex gap-4 justify-center mb-4">
+            {selectedPieces.dress && (
+              <img
+                src={selectedPieces.dress.image_url}
+                alt={selectedPieces.dress.name}
+                className="w-16 h-16 object-cover rounded-lg shadow-md opacity-75"
+              />
+            )}
             {selectedPieces.top && (
               <img
                 src={selectedPieces.top.image_url}
@@ -423,10 +479,75 @@ export default function AvaliacaoPage() {
               </div>
 
               <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-6">
+                  {/* Info sobre dress OU top+bottom */}
+                  <div className="bg-pink-50 border border-pink-200 rounded-lg p-4">
+                    <p className="text-sm text-gray-700">
+                      💡 <strong>Escolha:</strong> Selecione <strong>vestido</strong> OU <strong>parte de cima + parte de baixo</strong>
+                    </p>
+                  </div>
+
+                  {/* Dress selection (opcional - substitui top + bottom) */}
+                  <div className="space-y-2 relative">
+                    <label className="block text-base font-medium">
+                      Vestido <span className="text-gray-400">(substitui top + bottom)</span>
+                    </label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="🔍 Buscar vestido..."
+                        value={searchDress}
+                        onChange={(e) => setSearchDress(e.target.value)}
+                        onFocus={() => setFocusedField('dress')}
+                        onBlur={() => setTimeout(() => setFocusedField(null), 200)}
+                        disabled={isTraditionalLook}
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      />
+                      {(focusedField === 'dress' || searchDress.length > 0) && dressItems.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          {dressItems.map((item) => (
+                            <button
+                              key={item.id}
+                              onClick={() => handleSelectPiece("dress", item)}
+                              className="w-full flex items-center gap-3 p-3 hover:bg-pink-50 transition-colors text-left border-b last:border-b-0"
+                            >
+                              <img
+                                src={item.image_url}
+                                alt={item.name}
+                                className="w-12 h-12 object-cover rounded"
+                              />
+                              <div>
+                                <p className="font-medium text-sm">{item.name}</p>
+                                <p className="text-xs text-gray-500">{item.category}</p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {(focusedField === 'dress' || searchDress.length > 0) && dressItems.length === 0 && debouncedSearchDress && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-sm text-gray-500">
+                          Nenhum vestido encontrado
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Divisor "OU" */}
+                  {!isDressLook && !isTraditionalLook && (
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-300"></div>
+                      </div>
+                      <div className="relative flex justify-center text-sm">
+                        <span className="px-4 bg-white text-gray-500 font-medium">OU</span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Top selection */}
                   <div className="space-y-2 relative">
                     <label className="block text-base font-medium">
-                      Parte de cima <span className="text-red-500">*</span>
+                      Parte de cima <span className={isDressLook ? "text-gray-400" : "text-red-500"}>*</span>
                     </label>
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -437,7 +558,8 @@ export default function AvaliacaoPage() {
                         onChange={(e) => setSearchTop(e.target.value)}
                         onFocus={() => setFocusedField('top')}
                         onBlur={() => setTimeout(() => setFocusedField(null), 200)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        disabled={isDressLook}
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                       />
                       {(focusedField === 'top' || searchTop.length > 0) && topItems.length > 0 && (
                         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -471,7 +593,7 @@ export default function AvaliacaoPage() {
                   {/* Bottom selection */}
                   <div className="space-y-2 relative">
                     <label className="block text-base font-medium">
-                      Parte de baixo <span className="text-red-500">*</span>
+                      Parte de baixo <span className={isDressLook ? "text-gray-400" : "text-red-500"}>*</span>
                     </label>
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -482,7 +604,8 @@ export default function AvaliacaoPage() {
                         onChange={(e) => setSearchBottom(e.target.value)}
                         onFocus={() => setFocusedField('bottom')}
                         onBlur={() => setTimeout(() => setFocusedField(null), 200)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        disabled={isDressLook}
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                       />
                       {(focusedField === 'bottom' || searchBottom.length > 0) && bottomItems.length > 0 && (
                         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -562,9 +685,26 @@ export default function AvaliacaoPage() {
                   {selectedCount > 0 && (
                     <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl p-4">
                       <p className="text-sm font-medium mb-3">
-                        Peças selecionadas ({selectedCount}/3):
+                        Peças selecionadas ({selectedCount}/2):
                       </p>
                       <div className="flex gap-3 flex-wrap">
+                        {selectedPieces.dress && (
+                          <div className="relative bg-white rounded-lg p-2 border-2 border-pink-500 shadow-sm">
+                            <button
+                              onClick={() => handleRemovePiece("dress")}
+                              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors shadow-md"
+                              title="Remover peça"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                            <img
+                              src={selectedPieces.dress.image_url}
+                              alt={selectedPieces.dress.name}
+                              className="w-20 h-20 object-cover rounded"
+                            />
+                            <p className="text-xs mt-1 text-center font-medium">{selectedPieces.dress.name}</p>
+                          </div>
+                        )}
                         {selectedPieces.top && (
                           <div className="relative bg-white rounded-lg p-2 border-2 border-pink-500 shadow-sm">
                             <button
@@ -655,8 +795,8 @@ export default function AvaliacaoPage() {
 
                   {!canSubmit() && selectedCount > 0 && (
                     <p className="text-sm text-center text-gray-500">
-                      {selectedCount < 3 && "Selecione as 3 peças necessárias "}
-                      {selectedCount === 3 && occasion.trim().length === 0 && "Descreva a ocasião para continuar"}
+                      {selectedCount < 2 && "Selecione vestido + sapatos OU top + bottom + sapatos"}
+                      {selectedCount === 2 && occasion.trim().length === 0 && "Descreva a ocasião para continuar"}
                     </p>
                   )}
                 </div>
@@ -674,6 +814,17 @@ export default function AvaliacaoPage() {
               <div className="bg-white border border-gray-200 rounded-2xl shadow-xl p-8">
                 {/* Selected pieces */}
                 <div className="flex gap-6 justify-center mb-8 flex-wrap">
+                  {selectedPieces.dress && (
+                    <div className="text-center">
+                      <img
+                        src={selectedPieces.dress.image_url}
+                        alt={selectedPieces.dress.name}
+                        className="w-28 h-28 object-contain mb-2 mx-auto"
+                      />
+                      <p className="text-sm font-medium text-gray-700">{selectedPieces.dress.name}</p>
+                      <p className="text-xs text-gray-500">{selectedPieces.dress.category}</p>
+                    </div>
+                  )}
                   {selectedPieces.top && (
                     <div className="text-center">
                       <img

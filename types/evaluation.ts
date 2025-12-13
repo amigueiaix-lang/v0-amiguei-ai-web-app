@@ -15,23 +15,27 @@ export interface ClosetItem {
 export interface SelectedPieces {
   top: ClosetItem | null
   bottom: ClosetItem | null
+  dress: ClosetItem | null  // Vestido substitui top + bottom
   shoes: ClosetItem | null
 }
 
 export interface EvaluationPayload {
   user_id: string
   pieces: {
-    top_id: string
-    top_name: string
-    bottom_id: string
-    bottom_name: string
+    top_id?: string
+    top_name?: string
+    bottom_id?: string
+    bottom_name?: string
+    dress_id?: string
+    dress_name?: string
     shoes_id: string
     shoes_name: string
   }
   occasion: string
   images: {
-    top_url: string
-    bottom_url: string
+    top_url?: string
+    bottom_url?: string
+    dress_url?: string
     shoes_url: string
   }
 }
@@ -45,11 +49,12 @@ export interface EvaluationResult {
 }
 
 // Helper type for category mapping
-export type PieceCategory = 'top' | 'bottom' | 'shoes'
+export type PieceCategory = 'top' | 'bottom' | 'dress' | 'shoes'
 
 // Categories mapping for Supabase data
 export const CATEGORY_MAPPING = {
   top: ['Blusa', 'Camiseta', 'Camisa', 'Jaqueta', 'Casaco'],
-  bottom: ['Calça', 'Saia', 'Short', 'Vestido'],
-  shoes: ['Tênis', 'Sapato', 'Sandália']
+  bottom: ['Calça', 'Saia', 'Short'],
+  dress: ['Vestido'],
+  shoes: ['Tênis', 'Sapato', 'Sandália', 'Salto']
 } as const

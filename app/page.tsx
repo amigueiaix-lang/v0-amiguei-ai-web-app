@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Shirt, Sparkles, Star } from 'lucide-react'
+import { Shirt, Sparkles, Star, Users } from 'lucide-react'
 import { Header } from '@/components/Header'
 
 export default function Home() {
@@ -32,6 +32,13 @@ export default function Home() {
             <button className="w-full flex items-center gap-4 px-6 py-4 border-2 border-black rounded-xl hover:bg-pink-50 transition-colors">
               <Star size={24} strokeWidth={2} />
               <span className="text-lg font-medium">Avaliação do look</span>
+            </button>
+          </Link>
+
+          <Link href="/amigos">
+            <button className="w-full flex items-center gap-4 px-6 py-4 border-2 border-black rounded-xl hover:bg-pink-50 transition-colors">
+              <Users size={24} strokeWidth={2} />
+              <span className="text-lg font-medium">Amigas</span>
             </button>
           </Link>
         </div>

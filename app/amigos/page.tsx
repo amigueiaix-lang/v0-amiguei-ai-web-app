@@ -4,13 +4,14 @@ import { useState } from 'react'
 import { FriendsList } from '@/components/friends/FriendsList'
 import { FriendRequestsList } from '@/components/friends/FriendRequestsList'
 import { UserSearch } from '@/components/friends/UserSearch'
+import { LooksFeed } from '@/components/social/LooksFeed'
 import { ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
-type TabType = 'friends' | 'requests' | 'search'
+type TabType = 'feed' | 'friends' | 'requests' | 'search'
 
 export default function AmigosPage() {
-  const [activeTab, setActiveTab] = useState<TabType>('friends')
+  const [activeTab, setActiveTab] = useState<TabType>('feed')
   const router = useRouter()
 
   return (
@@ -26,29 +27,40 @@ export default function AmigosPage() {
             <span>Voltar</span>
           </button>
 
-          <h1 className="text-3xl font-bold text-black">Amigos</h1>
+          <h1 className="text-3xl font-bold text-black">Amigas</h1>
           <p className="text-gray-600 mt-2">
-            Conecte-se com outros usuários do Amiguei.AI
+            Veja looks, perfis e conecte-se com suas amigas
           </p>
         </div>
 
         {/* Tabs */}
         <div className="mb-6">
-          <div className="flex border-b border-gray-200">
+          <div className="flex border-b border-gray-200 overflow-x-auto">
+            <button
+              onClick={() => setActiveTab('feed')}
+              className={`px-6 py-3 font-medium text-sm transition-colors whitespace-nowrap ${
+                activeTab === 'feed'
+                  ? 'border-b-2 border-[#FF69B4] text-[#FF69B4]'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Feed de Looks
+            </button>
+
             <button
               onClick={() => setActiveTab('friends')}
-              className={`px-6 py-3 font-medium text-sm transition-colors ${
+              className={`px-6 py-3 font-medium text-sm transition-colors whitespace-nowrap ${
                 activeTab === 'friends'
                   ? 'border-b-2 border-[#FF69B4] text-[#FF69B4]'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              Meus Amigos
+              Minhas Amigas
             </button>
 
             <button
               onClick={() => setActiveTab('requests')}
-              className={`px-6 py-3 font-medium text-sm transition-colors ${
+              className={`px-6 py-3 font-medium text-sm transition-colors whitespace-nowrap ${
                 activeTab === 'requests'
                   ? 'border-b-2 border-[#FF69B4] text-[#FF69B4]'
                   : 'text-gray-500 hover:text-gray-700'
@@ -59,7 +71,7 @@ export default function AmigosPage() {
 
             <button
               onClick={() => setActiveTab('search')}
-              className={`px-6 py-3 font-medium text-sm transition-colors ${
+              className={`px-6 py-3 font-medium text-sm transition-colors whitespace-nowrap ${
                 activeTab === 'search'
                   ? 'border-b-2 border-[#FF69B4] text-[#FF69B4]'
                   : 'text-gray-500 hover:text-gray-700'
@@ -72,6 +84,7 @@ export default function AmigosPage() {
 
         {/* Tab Content */}
         <div className="mt-6">
+          {activeTab === 'feed' && <LooksFeed />}
           {activeTab === 'friends' && <FriendsList />}
           {activeTab === 'requests' && <FriendRequestsList />}
           {activeTab === 'search' && <UserSearch />}

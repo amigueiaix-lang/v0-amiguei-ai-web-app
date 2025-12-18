@@ -79,16 +79,16 @@ export function UserSearch() {
       <div className="flex gap-2">
         <Input
           type="text"
-          placeholder="Buscar por @username, nome ou email..."
+          placeholder="Buscar por @username..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyPress}
-          className="flex-1 border-gray-300 focus:border-[#FF69B4] focus:ring-[#FF69B4]"
+          className="flex-1 border-2 border-black rounded-xl focus:border-[#FF69B4] focus:ring-[#FF69B4]"
         />
         <Button
           onClick={searchUsers}
           disabled={loading || query.length < 2}
-          className="bg-gradient-to-r from-[#FF69B4] to-[#E91E63] hover:brightness-110"
+          className="bg-[#FF69B4] hover:bg-[#E91E63] text-white px-6 rounded-xl"
         >
           {loading ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -114,7 +114,6 @@ export function UserSearch() {
               <div>
                 <p className="font-semibold text-black">{user.name}</p>
                 <p className="text-sm text-[#FF69B4] font-medium">@{user.username}</p>
-                <p className="text-xs text-gray-500">{user.email}</p>
               </div>
 
               {/* Status: Já são amigos */}
@@ -160,7 +159,7 @@ export function UserSearch() {
       {users.length === 0 && !loading && (
         <div className="text-center py-12">
           <Search className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500">Digite um nome ou email para buscar usuários</p>
+          <p className="text-gray-500">Digite um @username para buscar usuários</p>
         </div>
       )}
     </div>

@@ -1,8 +1,7 @@
 'use client'
 
-import { Heart, MessageCircle, Share2, Bookmark } from 'lucide-react'
+import { Heart, MessageCircle } from 'lucide-react'
 import { useState } from 'react'
-import Image from 'next/image'
 
 interface LookPostCardProps {
   id: string
@@ -28,7 +27,6 @@ export function LookPostCard({
 }: LookPostCardProps) {
   const [isLiked, setIsLiked] = useState(initialIsLiked)
   const [likes, setLikes] = useState(initialLikes)
-  const [isSaved, setIsSaved] = useState(false)
 
   const handleLike = () => {
     if (isLiked) {
@@ -38,10 +36,6 @@ export function LookPostCard({
       setLikes(likes + 1)
       setIsLiked(true)
     }
-  }
-
-  const handleSave = () => {
-    setIsSaved(!isSaved)
   }
 
   return (
@@ -58,20 +52,20 @@ export function LookPostCard({
       </div>
 
       {/* Imagens do Look */}
-      <div className="relative aspect-square bg-gray-100">
+      <div className="relative bg-gradient-to-br from-pink-50 to-purple-50 p-8">
         {lookImages.length > 0 ? (
-          <div className="grid grid-cols-2 gap-1 h-full">
+          <div className="flex flex-wrap justify-center items-center gap-6 min-h-[300px]">
             {lookImages.map((image, index) => (
               <div
                 key={index}
-                className="relative bg-gradient-to-br from-pink-100 to-purple-100 flex items-center justify-center"
+                className="flex items-center justify-center"
               >
-                <div className="text-4xl">{image}</div>
+                <div className="text-6xl">{image}</div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
+          <div className="w-full min-h-[300px] flex items-center justify-center">
             <p className="text-gray-400">Sem imagem</p>
           </div>
         )}
@@ -79,32 +73,18 @@ export function LookPostCard({
 
       {/* Ações do Post */}
       <div className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={handleLike}
-              className="flex items-center gap-2 hover:opacity-70 transition-opacity"
-            >
-              <Heart
-                size={24}
-                className={isLiked ? 'fill-pink-500 stroke-pink-500' : 'stroke-black'}
-              />
-            </button>
-            <button className="flex items-center gap-2 hover:opacity-70 transition-opacity">
-              <MessageCircle size={24} className="stroke-black" />
-            </button>
-            <button className="flex items-center gap-2 hover:opacity-70 transition-opacity">
-              <Share2 size={24} className="stroke-black" />
-            </button>
-          </div>
+        <div className="flex items-center gap-4 mb-3">
           <button
-            onClick={handleSave}
-            className="hover:opacity-70 transition-opacity"
+            onClick={handleLike}
+            className="flex items-center gap-2 hover:opacity-70 transition-opacity"
           >
-            <Bookmark
+            <Heart
               size={24}
-              className={isSaved ? 'fill-black stroke-black' : 'stroke-black'}
+              className={isLiked ? 'fill-pink-500 stroke-pink-500' : 'stroke-black'}
             />
+          </button>
+          <button className="flex items-center gap-2 hover:opacity-70 transition-opacity">
+            <MessageCircle size={24} className="stroke-black" />
           </button>
         </div>
 

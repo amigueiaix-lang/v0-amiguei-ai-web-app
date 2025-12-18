@@ -1,6 +1,8 @@
 'use client'
 
 import { LookPostCard } from './LookPostCard'
+import { Plus } from 'lucide-react'
+import Link from 'next/link'
 
 // Dados mockados para visualização
 const mockPosts = [
@@ -52,7 +54,7 @@ const mockPosts = [
 
 export function LooksFeed() {
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-2xl mx-auto relative">
       {/* Header do Feed */}
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-black mb-2">Feed de Looks</h2>
@@ -75,6 +77,13 @@ export function LooksFeed() {
           </p>
         </div>
       )}
+
+      {/* Botão flutuante para publicar look */}
+      <Link href="/publicar-look">
+        <button className="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 flex items-center justify-center z-50">
+          <Plus size={32} strokeWidth={2.5} />
+        </button>
+      </Link>
     </div>
   )
 }

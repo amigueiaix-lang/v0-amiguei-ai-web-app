@@ -998,9 +998,6 @@ export default function AvaliacaoPage() {
                 >
                   Avaliar outro look
                 </button>
-                <button className="flex-1 px-8 py-4 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all hover:scale-[1.02] active:scale-95">
-                  Publicar
-                </button>
               </div>
             </div>
           )}

@@ -942,16 +942,16 @@ export default function ResultadoPage() {
             className="flex-1 max-w-xs px-8 py-4 bg-pink-500 text-white rounded-xl font-semibold hover:bg-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isSharing ? (
-              'Publicando...'
+              'Compartilhando...'
             ) : shareUrl ? (
               <>
                 <Check className="w-5 h-5" />
-                Publicado!
+                Link copiado!
               </>
             ) : (
               <>
                 <Share2 className="w-5 h-5" />
-                Publicar
+                Compartilhar Look
               </>
             )}
           </button>
